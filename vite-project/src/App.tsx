@@ -1,9 +1,10 @@
 import './App.css';
+import Footer from './layouts/Footer';
 
 function App() {
   return (
     <>
-      <h1 className="text-4xl"> 안녕</h1>
+      <Footer />
     </>
   );
 }

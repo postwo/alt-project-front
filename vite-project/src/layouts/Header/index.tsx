@@ -1,4 +1,7 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useUserStore } from '../../store/userSlice';
+import axiosInstance from '../../apis/axiosInstance';
+import { Cookies } from 'react-cookie';
 
 export default function Header() {
   const location = useLocation();
@@ -7,6 +10,23 @@ export default function Header() {
     pathname === '/login' ||
     pathname === '/signup' ||
     pathname === '/create-post';
+
+  // Zustand에서 상태와 액션 가져오기
+  const { email, isAuthenticated, logout } = useUserStore();
+
+  const cookies = new Cookies();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await axiosInstance.post('/api/member/logout');
+    } catch (err) {
+      console.error('로그아웃 실패: ', err);
+    }
+    cookies.remove('accessToken', { path: '/' });
+    logout();
+    navigate('/');
+  };
 
   return (
     <nav
@@ -23,16 +43,32 @@ export default function Header() {
 
       {!isAuthPage && (
         <div className="flex items-center space-x-4">
-          <Link to="/login">
-            <button className="text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50">
-              로그인
-            </button>
-          </Link>
-          <Link to="/signup">
-            <button className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm font-semibold">
-              회원가입
-            </button>
-          </Link>
+          {!isAuthenticated ? (
+            <>
+              <Link to="/login">
+                <button className="text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50">
+                  로그인
+                </button>
+              </Link>
+              <Link to="/signup">
+                <button className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm font-semibold">
+                  회원가입
+                </button>
+              </Link>
+            </>
+          ) : (
+            <>
+              <span className="text-gray-700 font-medium">
+                안녕하세요, {email}님
+              </span>
+              <button
+                onClick={handleLogout} // Zustand logout 사용
+                className="bg-red-500 hover:bg-red-600 text-white rounded-lg px-4 py-2 text-sm font-semibold"
+              >
+                로그아웃
+              </button>
+            </>
+          )}
         </div>
       )}
     </nav>

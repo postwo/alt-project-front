@@ -8,8 +8,23 @@ import Container from './layouts/Container';
 import Login from './views/Member/login';
 import SignUp from './views/Member/signup';
 import Admin from './views/Admin/indes';
+import { Cookies } from 'react-cookie';
+import { useUserStore } from './store/userSlice';
+import { useEffect } from 'react';
+
+const cookies = new Cookies();
 
 function App() {
+  const setUserFromToken = useUserStore((state) => state.setUserFromToken);
+
+  // 앱 초기 렌더링 시 쿠키에서 토큰 가져와 Zustand 상태 초기화
+  useEffect(() => {
+    const token = cookies.get('accessToken');
+    if (token) {
+      setUserFromToken(token);
+    }
+  }, [setUserFromToken]);
+
   return (
     <Routes>
       <Route element={<Container />}>

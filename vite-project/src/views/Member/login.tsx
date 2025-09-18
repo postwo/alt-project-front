@@ -1,9 +1,12 @@
 import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
 import { useState } from 'react';
 import { Cookies, useCookies } from 'react-cookie';
 import { Link, useNavigate } from 'react-router-dom';
+import { useUserStore } from '../../store/userSlice';
 
 function Login() {
+  const setUserFromToken = useUserStore((state) => state.setUserFromToken);
   const navigate = useNavigate();
   const cookies = new Cookies();
 
@@ -38,15 +41,15 @@ function Login() {
         { withCredentials: true }
       );
 
+      //로그인 상태를 브라우저를 닫아도 유지하고 싶다면 maxAge를 넣는 게 좋고, 사이트 전체에서 사용하려면 path: '/'를 넣는 게 안전
       cookies.set('accessToken', response.data.data.accessToken, {
         maxAge: 60 * 60 * 24,
         path: '/',
       });
 
-      console.log('로그인 성공:', response.data.data.accessToken, {
-        maxAge: 60 * 60 * 24,
-        path: '/',
-      });
+      const token = response.data.data.accessToken;
+
+      setUserFromToken(token);
       alert('로그인 성공!' + response.data.data.accessToken);
 
       // 로그인 성공 시 홈으로 이동

@@ -27,18 +27,50 @@ axiosInstance.interceptors.request.use(
 );
 
 // 응답 인터셉터: 401/403 처리
+// axiosInstance.interceptors.response.use(
+//   (response) => response,
+//   (error) => {
+//     if (error.response) {
+//       const status = error.response.status;
+//       if (status === 401) {
+//         alert('로그인이 필요합니다.');
+//       } else if (status === 403) {
+//         alert('권한이 없습니다.');
+//       }
+//     }
+//     return Promise.reject(error);
+//   }
+// );
+
+// 이거를 테스트할려면 로그인하고 다른곳으로페이지를 이동해서 토큰이 잘발급되는지 보면 된다
 axiosInstance.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response) {
-      const status = error.response.status;
-      if (status === 401) {
-        alert('로그인이 필요합니다.');
-      } else if (status === 403) {
-        alert('권한이 없습니다.');
+  (res) => res,
+  // 토큰이 만료되는 순간 에러 발생
+  async (err) => {
+    console.error('[Interceptor] error:', err);
+    console.log('[Interceptor] err.response?.status =', err.response?.status);
+    const originalRequest = err.config;
+    // 토큰이 만료 -> 그만 -> 새로운 토큰 요청
+    //_retry는 무한재시도 방지
+    if (err.response?.status == 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const res = await axios.post(
+          'http://localhost:8080/api/member/refresh',
+          {},
+          { withCredentials: true }
+        );
+        const newAccessToken = res.data.data.accessToken;
+        cookies.set('accessToken', newAccessToken);
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        return axiosInstance(originalRequest);
+      } catch (refreshError) {
+        console.log('Refresh실패: ', refreshError);
+        window.location.href = '/login';
       }
     }
-    return Promise.reject(error);
+
+    return Promise.reject(err);
   }
 );
 

@@ -4,12 +4,12 @@ import Header from '../Header';
 
 function Container() {
   const { pathname } = useLocation();
-
+  const noFooterPaths = ['/login', '/signup'];
   return (
     <>
       <Header />
       <Outlet />
-      {pathname !== '/auth' && <Footer />}
+      {!noFooterPaths.includes(pathname) && <Footer />}
     </>
   );
 }

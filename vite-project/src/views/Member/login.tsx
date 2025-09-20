@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Cookies, useCookies } from 'react-cookie';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUserStore } from '../../store/userSlice';
+import kakaoLoginImg from '../../assets/kakao_login_medium_narrow.png';
 
 function Login() {
   const setUserFromToken = useUserStore((state) => state.setUserFromToken);
@@ -58,6 +59,12 @@ function Login() {
       console.error('로그인 실패:', error.response?.data || error.message);
       alert('로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.');
     }
+  };
+
+  const handleKakaoLogin = () => {
+    // 서버에서 설정한 카카오 OAuth2 엔드포인트로 이동
+    // 서버로 요청하는거기 때문에 서버랑 포트가 일치해야 한다
+    window.location.href = 'http://localhost:8080/oauth2/authorization/kakao';
   };
 
   return (
@@ -155,11 +162,19 @@ function Login() {
 
               <button
                 type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-medium transition-colors"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-medium transition-colors cursor-pointer"
               >
                 로그인
               </button>
             </form>
+
+            <div className="social-login">
+              <img
+                src={kakaoLoginImg}
+                className="kakao-img w-full h-12 object-contain cursor-pointer"
+                onClick={handleKakaoLogin}
+              />
+            </div>
 
             <div className="mt-6 text-center">
               <p className="text-gray-600">

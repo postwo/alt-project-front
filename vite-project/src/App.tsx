@@ -11,6 +11,7 @@ import Admin from './views/Admin/indes';
 import { Cookies } from 'react-cookie';
 import { useUserStore } from './store/userSlice';
 import { useEffect } from 'react';
+import KakaoRedirectHandler from './views/oauth/kakao';
 
 const cookies = new Cookies();
 
@@ -28,6 +29,10 @@ function App() {
   return (
     <Routes>
       <Route element={<Container />}>
+        <Route
+          path="/oauth2/callback/kakao"
+          element={<KakaoRedirectHandler />}
+        />
         <Route path="/" element={<Main />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />

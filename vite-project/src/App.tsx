@@ -12,6 +12,7 @@ import { Cookies } from 'react-cookie';
 import { useUserStore } from './store/userSlice';
 import { useEffect } from 'react';
 import KakaoRedirectHandler from './views/oauth/kakao';
+import GoogleRedirectHandler from './views/oauth/GoogleRedirectHandler';
 
 const cookies = new Cookies();
 
@@ -32,6 +33,10 @@ function App() {
         <Route
           path="/oauth2/callback/kakao"
           element={<KakaoRedirectHandler />}
+        />
+        <Route
+          path="/oauth2/callback/google"
+          element={<GoogleRedirectHandler />}
         />
         <Route path="/" element={<Main />} />
         <Route path="/login" element={<Login />} />

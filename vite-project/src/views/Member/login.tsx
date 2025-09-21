@@ -5,6 +5,7 @@ import { Cookies, useCookies } from 'react-cookie';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUserStore } from '../../store/userSlice';
 import kakaoLoginImg from '../../assets/kakao_login_medium_narrow.png';
+import googleLoginImg from '../../assets/google_login.png';
 
 function Login() {
   const setUserFromToken = useUserStore((state) => state.setUserFromToken);
@@ -65,6 +66,12 @@ function Login() {
     // 서버에서 설정한 카카오 OAuth2 엔드포인트로 이동
     // 서버로 요청하는거기 때문에 서버랑 포트가 일치해야 한다
     window.location.href = 'http://localhost:8080/oauth2/authorization/kakao';
+  };
+
+  const handleGoogleLogin = () => {
+    // 👈 추가
+    // 백엔드에서 설정한 구글 OAuth2 엔드포인트로 이동
+    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
   };
 
   return (
@@ -173,6 +180,12 @@ function Login() {
                 src={kakaoLoginImg}
                 className="kakao-img w-full h-12 object-contain cursor-pointer"
                 onClick={handleKakaoLogin}
+              />
+              <img
+                src={googleLoginImg}
+                className="google-img w-full h-12 object-contain cursor-pointer"
+                onClick={handleGoogleLogin}
+                alt="구글 로그인"
               />
             </div>
 

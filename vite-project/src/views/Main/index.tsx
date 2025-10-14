@@ -23,11 +23,13 @@ function Main() {
                   채팅으로 모집해서 함께 나눠 사세요.
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button className="border-2 border-emerald-400 text-emerald-700 hover:bg-emerald-50 text-lg px-8 py-4 bg-transparent rounded-full">
-                  나눔 게시글 둘러보기
-                </button>
-              </div>
+              <a href="/posts">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button className="border-2 border-emerald-400 text-emerald-700 hover:bg-emerald-50 text-lg px-8 py-4 bg-transparent rounded-full">
+                    나눔 게시글 둘러보기
+                  </button>
+                </div>
+              </a>
               <div className="flex items-center space-x-8 text-sm text-gray-500">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
@@ -298,11 +300,11 @@ function Main() {
           </div>
 
           <div className="text-center mt-12">
-            <Link to="/posts">
-              <button className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 bg-transparent">
+            <a href="/posts">
+              <button className="border-2 border-emerald-400 text-emerald-600 bg-transparent hover:bg-emerald-50 px-8 py-3 rounded-full font-medium transition-colors">
                 더 많은 나눔 보기
               </button>
-            </Link>
+            </a>
           </div>
         </div>
       </section>

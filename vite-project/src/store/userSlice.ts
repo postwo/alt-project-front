@@ -10,7 +10,7 @@ interface UserState {
   email: string | null;
   //   nickname: string | null;
   memberRoleList: string[] | null;
-  isAuthenticated: boolean; // 로그인 상태
+  isAuthenticated: boolean | null; // 로그인 상태
   setUserFromToken: (token: string) => void;
   logout: () => void;
 }
@@ -19,7 +19,8 @@ export const useUserStore = create<UserState>((set) => ({
   email: null,
   nickname: null,
   memberRoleList: null,
-  isAuthenticated: false,
+  // isAuthenticated: false,
+  isAuthenticated: null, // ⭐️ 초기값 null (아직 확인 안됨)
 
   setUserFromToken: (token: string) => {
     try {

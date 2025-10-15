@@ -13,6 +13,9 @@ import { useUserStore } from './store/userSlice';
 import { useEffect } from 'react';
 import KakaoRedirectHandler from './views/oauth/kakao';
 import GoogleRedirectHandler from './views/oauth/GoogleRedirectHandler';
+import Posts from './views/Posts/PostsPage';
+import ChatModal from './views/Chat/chat-modal';
+import ChatModalWrapper from './views/Chat/ChatModalWrapper';
 
 const cookies = new Cookies();
 
@@ -24,6 +27,9 @@ function App() {
     const token = cookies.get('accessToken');
     if (token) {
       setUserFromToken(token);
+    } else {
+      // ⭐️ 토큰이 없으면 명시적으로 false로 설정
+      useUserStore.setState({ isAuthenticated: false });
     }
   }, [setUserFromToken]);
 
@@ -42,9 +48,11 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/posts" element={<Posts />} />
+        <Route path="/chat" element={<ChatModalWrapper />} />
         <Route path="/board">
           <Route path=":boardNumber" element={<BoardDetail />} />
-          <Route path="write" element={<BoardWrite />} />
+          <Route path="create-post" element={<BoardWrite />} />
           <Route path="update/:boardNumber" element={<BoardUpdate />} />
         </Route>
       </Route>

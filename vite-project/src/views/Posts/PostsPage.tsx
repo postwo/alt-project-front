@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // ====================================================================
 // 1. 타입 정의 (TypeScript Interface)
@@ -94,7 +95,14 @@ const samplePosts: Post[] = [
 // 3. 메인 컴포넌트 (React.FC 사용 및 State에 타입 명시)
 // ====================================================================
 
+// 여기가 게시글 모음 페이지
 const Posts: React.FC = () => {
+  const navigate = useNavigate();
+
+  const handlePostClick = (id: number) => {
+    navigate(`/board/${id}`);
+  };
+
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [selectedHashtag, setSelectedHashtag] = useState<string>('');
@@ -279,7 +287,7 @@ const Posts: React.FC = () => {
           {/* 게시글 목록 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredPosts.map((post) => (
-              <a key={post.id} href={`/posts/${post.id}`} className="block">
+              <a key={post.id} href={`/board/${post.id}`} className="block">
                 <div className="group hover:shadow-2xl transition-all duration-300 border border-gray-100 rounded-xl bg-white overflow-hidden cursor-pointer">
                   <div className="relative">
                     <img

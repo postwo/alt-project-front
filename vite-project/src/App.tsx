@@ -44,15 +44,18 @@ function App() {
           path="/oauth2/callback/google"
           element={<GoogleRedirectHandler />}
         />
-        <Route path="/" element={<Main />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/posts" element={<Posts />} />
-        <Route path="/chat" element={<ChatModalWrapper />} />
+        <Route path="/" element={<Main />} /> {/* 메인 페이지 */}
+        <Route path="/login" element={<Login />} /> {/* 로그인 페이지 */}
+        <Route path="/signup" element={<SignUp />} /> {/* 회원가입 페이지 */}
+        <Route path="/admin" element={<Admin />} /> {/* 관리자 페이지 */}
+        <Route path="/posts" element={<Posts />} /> {/* 게시글 목록 페이지 */}
+        <Route path="/chat" element={<ChatModalWrapper />} /> {/* 채팅 모달 */}
         <Route path="/board">
+          {/* 게시글 상세보기 */}
           <Route path=":boardNumber" element={<BoardDetail />} />
+          {/* 게시글 작성 페이지 */}
           <Route path="create-post" element={<BoardWrite />} />
+          {/* 게시글 수정 페이지 */}
           <Route path="update/:boardNumber" element={<BoardUpdate />} />
         </Route>
       </Route>

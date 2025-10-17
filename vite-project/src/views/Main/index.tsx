@@ -24,13 +24,14 @@ function Main() {
                 </p>
               </div>
               <a href="/posts">
-                <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
                   <button className="border-2 border-emerald-400 text-emerald-700 hover:bg-emerald-50 text-lg px-8 py-4 bg-transparent rounded-full">
                     나눔 게시글 둘러보기
                   </button>
                 </div>
               </a>
-              <div className="flex items-center space-x-8 text-sm text-gray-500">
+              {/* 🔥 justify-center 추가하여 가운데 정렬 */}
+              <div className="flex items-center justify-center space-x-8 text-sm text-gray-500">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
                   <span>무료 채팅 참여</span>

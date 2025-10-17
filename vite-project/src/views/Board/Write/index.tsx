@@ -12,15 +12,21 @@ function BoardWrite() {
     'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
   const open = useDaumPostcodePopup(postCodeScriptUrl);
 
-  // ⭐️ 모든 Hook을 먼저 선언 (early return 전에!)
-  // 폼 데이터 상태
+  // 1️⃣ 주소 관련 새로운 상태 추가
+  const [addressData, setAddressData] = useState({
+    sido: '',
+    sigungu: '',
+    fullAddress: '', // 도로명/지번 주소 (사용자에게 보여줄 전체 주소)
+  });
+
   const [formData, setFormData] = useState({
     title: '',
     hashtags: '',
     content: '',
     totalPrice: '',
-    maxParticipants: '',
-    address: '',
+    maxParticipants: '', // 🚨 모집 인원 상태 추가
+    // 기존 address 필드를 addressData.fullAddress로 대체하거나, 둘 다 사용 가능
+    address: '', // 일단 기존 폼 데이터 구조 유지
   });
 
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -28,13 +34,6 @@ function BoardWrite() {
   const [mainImageIndex, setMainImageIndex] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  /*
-  ==============================================
-  ## 🔒 로그인 인증 로직
-  ==============================================
-  */
-
-  // ⭐️ 인증 상태가 false로 확정되면 리다이렉트
   useEffect(() => {
     if (isAuthenticated === false) {
       alert('나눔 공고 작성을 위해 로그인이 필요합니다.');
@@ -51,6 +50,8 @@ function BoardWrite() {
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
+
+  // (중략: handleImageChange, removeImage, setAsMainImage는 동일)
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -88,10 +89,12 @@ function BoardWrite() {
     setMainImageIndex(index);
   };
 
+  // 2️⃣ Daum Postcode 완료 콜백 수정
   const handleAddressComplete = useCallback((data: any) => {
-    let fullAddress = data.address;
+    let fullAddress = data.address; // '서울시 강남구 논현동 1-1'
     let extraAddress = '';
 
+    // 법정동명 또는 아파트/건물명 추가
     if (data.addressType === 'R') {
       if (data.bname !== '') {
         extraAddress += data.bname;
@@ -103,6 +106,14 @@ function BoardWrite() {
       fullAddress += extraAddress !== '' ? ` (${extraAddress})` : '';
     }
 
+    // 시/도, 시/군/구 데이터를 별도로 추출하여 상태에 저장
+    setAddressData({
+      sido: data.sido || '', // 예: '서울'
+      sigungu: data.sigungu || '', // 예: '강남구'
+      fullAddress: fullAddress, // 예: '서울시 강남구 논현동 1-1 (논현동)'
+    });
+
+    // 폼 데이터에는 전체 주소만 업데이트 (기존 로직 유지)
     handleInputChange('address', fullAddress);
   }, []);
 
@@ -110,6 +121,30 @@ function BoardWrite() {
     open({
       onComplete: handleAddressComplete,
     });
+  };
+
+  // 🔥 이미지를 먼저 업로드하여 URL을 받는 함수
+  const uploadImages = async (files: File[]): Promise<string[]> => {
+    const uploadPromises = files.map(async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await axiosInstance.post('/file/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        // 서버 응답 형태에 따라 수정 필요할 수 있음.
+        // 현재는 response.data가 URL 문자열이라고 가정합니다.
+        return response.data;
+      } catch (error) {
+        console.error('이미지 업로드 실패:', error);
+        throw error;
+      }
+    });
+
+    return await Promise.all(uploadPromises);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -127,46 +162,59 @@ function BoardWrite() {
       return;
     }
 
+    // 🚨 모집 인원 유효성 검사: 본인 포함 최소 2명 이상이어야 함
+    const maxParticipantsNum = Number(formData.maxParticipants);
+    if (maxParticipantsNum < 2 || maxParticipantsNum > 100) {
+      alert('총 모집 인원은 본인 포함 최소 2명, 최대 100명으로 입력해주세요.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const data = new FormData();
+      // 1️⃣ 먼저 이미지들을 업로드하여 URL을 받음
+      const orderedImages = [
+        selectedImages[mainImageIndex],
+        ...selectedImages.filter((_, i) => i !== mainImageIndex),
+      ];
 
-      const boardRequestDto = {
+      const imageUrls = await uploadImages(orderedImages);
+
+      // 2️⃣ 게시글 데이터 생성 (이미지 URL, 모집 인원 포함)
+      const boardRequest = {
         title: formData.title,
         content: formData.content,
         totalPrice: Number(formData.totalPrice),
-        maxParticipants: Number(formData.maxParticipants),
+        maxParticipants: maxParticipantsNum, // 🚨 본인 포함 총 모집 인원 수 전송
         address: formData.address,
+        // 🚨 서버에서 시/군/구를 별도로 필요로 한다면 여기에 추가합니다.
+        // sido: addressData.sido,
+        // sigungu: addressData.sigungu,
         hashtags: formData.hashtags
           .split(' ')
           .filter((tag) => tag.startsWith('#') && tag.length > 1),
+        boardImageList: imageUrls, // 업로드된 이미지 URL 배열
       };
 
-      data.append(
-        'boardRequest',
-        new Blob([JSON.stringify(boardRequestDto)], {
-          type: 'application/json',
-        })
-      );
-
-      if (selectedImages[mainImageIndex]) {
-        data.append('images', selectedImages[mainImageIndex]);
-      }
-
-      selectedImages.forEach((file, index) => {
-        if (index !== mainImageIndex) {
-          data.append('images', file);
+      // 3️⃣ 게시글 생성 요청 (동일)
+      // 백엔드에서 이 요청을 받으면 currentParticipants를 1로 초기화해야 합니다.
+      const response = await axiosInstance.post(
+        '/api/board/create',
+        boardRequest,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
         }
-      });
-
-      const response = await axiosInstance.post('/api/boards', data);
+      );
 
       console.log('나눔 공고 등록 성공:', response.data);
       alert('나눔 공고가 성공적으로 등록되었습니다!');
 
       const boardId = response.data?.data?.id;
-      navigate(boardId ? `/boards/${boardId}` : '/boards');
+
+      console.log('boardid' + boardId);
+      navigate('/posts');
     } catch (error) {
       console.error('나눔 공고 등록 실패:', error);
       alert('나눔 공고 등록에 실패했습니다. 다시 시도해 주세요.');
@@ -175,7 +223,6 @@ function BoardWrite() {
     }
   };
 
-  // ⭐️ 로딩 중일 때는 화면 표시 안함 (모든 Hook 선언 후!)
   if (isAuthenticated === null) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center">
@@ -191,6 +238,7 @@ function BoardWrite() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50">
       <main className="py-8 sm:py-12 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto relative">
+          {/* (중략: 이모지 배경) */}
           <div className="fixed inset-0 pointer-events-none overflow-hidden">
             <div className="absolute top-20 left-4 sm:left-10 text-4xl sm:text-6xl animate-bounce opacity-20">
               🥬
@@ -218,6 +266,7 @@ function BoardWrite() {
 
             <div className="space-y-4 sm:space-y-6">
               <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+                {/* (중략: 제목, 해시태그, 이미지) */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     📦 제목
@@ -322,7 +371,7 @@ function BoardWrite() {
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                    💰 총 가격
+                    💰 1인당 가격
                   </label>
                   <input
                     type="number"
@@ -336,9 +385,10 @@ function BoardWrite() {
                   />
                 </div>
 
+                {/* 🚨 모집 인원 입력 필드 수정: 본인 포함 총 인원으로 변경 */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                    👥 모집 인원
+                    🧑‍🤝‍🧑 총 모집 인원 (본인 포함)
                   </label>
                   <input
                     type="number"
@@ -347,24 +397,53 @@ function BoardWrite() {
                     onChange={(e) =>
                       handleInputChange('maxParticipants', e.target.value)
                     }
+                    min="2" // 최소 2명 (작성자 1명 + 참여자 1명)
                     className="h-10 sm:h-12 border border-gray-200 focus:border-emerald-500 focus:ring-emerald-500 text-sm sm:text-base w-full px-2 rounded"
                     required
                   />
+                  <p className="text-xs text-gray-500">
+                    나눔에 참여할 **총 인원 수**를 입력해주세요. (예: 5명이서
+                    나눌 경우 5를 입력)
+                  </p>
                 </div>
 
+                {/* 3️⃣ 주소 필드 수정 및 시군구 표시 추가 */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     📍 거래 지역
                   </label>
-                  <input
-                    type="text"
-                    placeholder="클릭하여 거래 지역 검색"
-                    value={formData.address}
-                    readOnly
-                    onClick={handleAddressClick}
-                    className="h-10 sm:h-12 border border-gray-200 focus:border-emerald-500 focus:ring-emerald-500 text-sm sm:text-base w-full px-2 rounded cursor-pointer"
-                    required
-                  />
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {/* 시/도 및 시/군/구 필드 (읽기 전용으로 표시) */}
+                    <input
+                      type="text"
+                      placeholder="시/도"
+                      value={addressData.sido}
+                      readOnly
+                      className="h-10 sm:h-12 border border-gray-200 text-sm sm:text-base w-full sm:w-1/3 px-2 rounded bg-gray-50 text-gray-600"
+                    />
+                    <input
+                      type="text"
+                      placeholder="시/군/구"
+                      value={addressData.sigungu}
+                      readOnly
+                      className="h-10 sm:h-12 border border-gray-200 text-sm sm:text-base w-full sm:w-1/3 px-2 rounded bg-gray-50 text-gray-600"
+                    />
+                    {/* 전체 주소 필드 (검색 버튼 역할) */}
+                    <input
+                      type="text"
+                      placeholder="클릭하여 상세 주소 검색"
+                      value={formData.address || '주소 검색'}
+                      readOnly
+                      onClick={handleAddressClick}
+                      className="h-10 sm:h-12 border border-gray-200 focus:border-emerald-500 focus:ring-emerald-500 text-sm sm:text-base w-full sm:w-1/3 px-2 rounded cursor-pointer text-center bg-emerald-50 hover:bg-emerald-100 transition-colors"
+                      required
+                    />
+                  </div>
+                  {addressData.fullAddress && (
+                    <p className="text-sm text-gray-700 font-medium mt-2 p-2 border border-dashed border-gray-300 rounded bg-white">
+                      **선택된 주소:** {addressData.fullAddress}
+                    </p>
+                  )}
                 </div>
 
                 <div className="pt-4 sm:pt-6">

@@ -61,6 +61,11 @@ export default function Header() {
               <span className="text-gray-700 font-medium">
                 안녕하세요, {email}님
               </span>
+              <Link to="/mypage">
+                <button className="text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg px-4 py-2 text-sm font-semibold">
+                  마이페이지
+                </button>
+              </Link>
               <button
                 onClick={handleLogout} // Zustand logout 사용
                 className="bg-red-500 hover:bg-red-600 text-white rounded-lg px-4 py-2 text-sm font-semibold"

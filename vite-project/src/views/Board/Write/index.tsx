@@ -213,6 +213,16 @@ function BoardWrite() {
 
       const boardId = response.data?.data?.id;
 
+      const chatRoomName = formData.title; // 게시글 제목을 채팅방 이름으로 사용
+      const chatRequestUrl = `/chat/room/group/create`;
+
+      // 백엔드 API 호출: roomName(게시글 제목), boardId(새 게시글 ID), maxParticipants 전송
+      const chatRoomResponse = await axiosInstance.post(
+        // `${chatRequestUrl}?roomName=${chatRoomName}&boardId=${boardId}&maxParticipants=${maxParticipantsNum}`
+        `${chatRequestUrl}?roomName=${chatRoomName}`
+      );
+      console.log('채팅방 개설 성공. Room ID:', chatRoomResponse.data?.data);
+
       console.log('boardid' + boardId);
       navigate('/posts');
     } catch (error) {

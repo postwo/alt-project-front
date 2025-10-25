@@ -1,3 +1,5 @@
+// BoardDetail.tsx
+
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ChatModal from '../../Chat/chat-modal';
@@ -15,12 +17,16 @@ interface Post {
   hashtags: string[];
   imageUrls: string[];
   writerEmail?: string;
+  chatRoomId: number;
 }
+
+// ⭐️ API BASE URL 정의 (ChatModal에서도 사용)
+const API_BASE_URL = '/chat';
 
 function BoardDetail() {
   const params = useParams();
   const navigate = useNavigate();
-  const postId = Number(params.boardNumber); // 보드넘버를 가지고 올려면 app.tsx에서 라우트한 path=":boardNumber" 아거랑 이름을 같게 해야한다 (중요)
+  const postId = Number(params.boardNumber);
   const { isAuthenticated, email } = useUserStore();
 
   const [post, setPost] = useState<Post | null>(null);
@@ -30,18 +36,13 @@ function BoardDetail() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatPosition, setChatPosition] = useState({ x: 100, y: 100 });
 
-  // 게시글 데이터 불러오기 (수정된 부분)
+  // 게시글 데이터 불러오기
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        // ✅ 쿼리 파라미터로 boardId 전달
-        // const response = await axiosInstance.get('/api/board/detail', {
-        //   params: { boardId: postId },
-        // });
-
-        // postId를 URL 경로에 직접 삽입 = pathvariable
         const response = await axiosInstance.get(`/api/board/detail/${postId}`);
         console.log('게시글 상세 응답:', response);
+        console.log('게시글 roomid :', response.data?.data.chatRoomId);
         setPost(response.data?.data || null);
       } catch (error) {
         console.error('게시글 불러오기 실패:', error);
@@ -53,7 +54,6 @@ function BoardDetail() {
     };
 
     if (postId) {
-      // 이조건이 맞은면 게시글을 가지고 온다
       fetchPost();
     }
   }, [postId, navigate]);
@@ -61,7 +61,7 @@ function BoardDetail() {
   // 작성자 여부 확인
   const isAuthor = post?.writerEmail === email;
 
-  // 게시글 삭제
+  // 게시글 삭제 (생략)
   const handleDelete = async () => {
     if (!window.confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
       return;
@@ -77,11 +77,12 @@ function BoardDetail() {
     }
   };
 
-  // 게시글 수정 페이지로 이동
+  // 게시글 수정 페이지로 이동 (생략)
   const handleEdit = () => {
     navigate(`/board/edit/${postId}`);
   };
 
+  // 좋아요 처리 (생략)
   const handleLike = async () => {
     if (!isAuthenticated) {
       alert('로그인이 필요한 기능입니다.');
@@ -122,13 +123,48 @@ function BoardDetail() {
     );
   };
 
-  const handleChatOpen = () => {
+  // ⭐️ 핵심 수정: 채팅방 참여 및 모달 열기
+  const handleChatOpen = async () => {
     if (!isAuthenticated) {
       alert('로그인이 필요한 기능입니다.');
       navigate('/login');
       return;
     }
 
+    if (!post || post.chatRoomId <= 0) {
+      alert('유효하지 않은 채팅방 정보입니다.');
+      return;
+    }
+
+    // 1. 참여 API 호출 (한 번만 실행)
+    try {
+      console.log(
+        `[API CALL] 채팅방 참여 요청: ${API_BASE_URL}/room/group/${post.chatRoomId}/join (BoardDetail.tsx)`
+      );
+      await axiosInstance.post(
+        `${API_BASE_URL}/room/group/${post.chatRoomId}/join`
+      );
+      console.log(`[SUCCESS] 채팅방 참여 완료 (roomId: ${post.chatRoomId})`);
+    } catch (error) {
+      console.error('[ERROR] 채팅방 참여 요청 실패:', error);
+
+      // 서버 응답 상태 코드를 확인합니다.
+      const status = (error as any).response?.status;
+
+      // 500 에러는 서버 문제이므로 모달을 열지 않고 알림
+      if (status === 500) {
+        alert('채팅방 참여에 실패했습니다. (서버 내부 오류)');
+        return;
+      }
+
+      // 400 Bad Request나 기타 오류는 이미 참여자인 경우로 간주하고 로직을 계속 진행
+      // 백엔드에서 409 Conflict 등으로 이미 참여자임을 명확히 알려주면 더욱 좋습니다.
+      console.log(
+        '[INFO] 참여 요청 실패. 이미 참여했거나 기타 오류로 간주하고 채팅 모달을 엽니다.'
+      );
+    }
+
+    // 2. 모달 위치 설정 및 열기 (참여 요청 성공 또는 이미 참여한 경우)
     const modalWidth = window.innerWidth < 640 ? window.innerWidth - 32 : 384;
     const modalHeight =
       window.innerWidth < 640 ? window.innerHeight - 100 : 600;
@@ -180,7 +216,7 @@ function BoardDetail() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-100">
       <main className="py-6 sm:py-8 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
-          {/* 뒤로 가기 버튼 및 수정/삭제 */}
+          {/* 뒤로 가기 버튼 및 수정/삭제 (생략) */}
           <div className="flex justify-between items-center mb-4">
             <button
               onClick={() => navigate('/posts')}
@@ -209,7 +245,7 @@ function BoardDetail() {
           </div>
 
           <div className="overflow-hidden shadow-xl border-0 bg-white/80 backdrop-blur-sm rounded-xl">
-            {/* 이미지 슬라이더 */}
+            {/* 이미지 슬라이더 (생략) */}
             <div className="relative aspect-video bg-gray-100">
               <img
                 src={
@@ -221,7 +257,7 @@ function BoardDetail() {
                 className="w-full h-full object-cover"
               />
 
-              {/* 이미지 네비게이션 */}
+              {/* 이미지 네비게이션 (생략) */}
               {post.imageUrls.length > 1 && (
                 <>
                   <button
@@ -263,14 +299,14 @@ function BoardDetail() {
             </div>
 
             <div className="p-6 sm:p-8">
-              {/* 제목 */}
+              {/* 제목 (생략) */}
               <div className="mb-6">
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
                   {post.title}
                 </h1>
               </div>
 
-              {/* 해시태그 */}
+              {/* 해시태그 (생략) */}
               {post.hashtags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-6">
                   {post.hashtags.map((hashtag, index) => (
@@ -278,13 +314,13 @@ function BoardDetail() {
                       key={index}
                       className="bg-emerald-50 text-emerald-600 border border-emerald-200 px-3 py-1 rounded-full text-sm"
                     >
-                      #{hashtag}
+                      {hashtag}
                     </span>
                   ))}
                 </div>
               )}
 
-              {/* 가격 및 지역 정보 */}
+              {/* 가격 및 지역 정보 (생략) */}
               <div className="bg-emerald-50 border border-emerald-200 mb-6 p-4 rounded-lg">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -302,7 +338,7 @@ function BoardDetail() {
                 </div>
               </div>
 
-              {/* 상품 설명 */}
+              {/* 상품 설명 (생략) */}
               <div className="mb-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-3">
                   상품 설명
@@ -312,7 +348,7 @@ function BoardDetail() {
                 </p>
               </div>
 
-              {/* 좋아요 및 조회수 */}
+              {/* 좋아요 및 조회수 (생략) */}
               <div className="flex items-center gap-6 mb-6 pb-6 border-b">
                 <button
                   onClick={handleLike}
@@ -343,7 +379,7 @@ function BoardDetail() {
         </div>
       </main>
 
-      {isChatOpen && (
+      {isChatOpen && postId > 0 && (
         <ChatModal
           isOpen={isChatOpen}
           onClose={() => setIsChatOpen(false)}
@@ -352,6 +388,7 @@ function BoardDetail() {
           maxParticipants={5}
           onParticipantChange={() => {}}
           position={chatPosition}
+          roomId={post.chatRoomId} // 채팅방 ID 전달
         />
       )}
     </div>

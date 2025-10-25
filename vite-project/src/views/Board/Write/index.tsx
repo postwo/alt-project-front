@@ -25,7 +25,6 @@ function BoardWrite() {
     content: '',
     totalPrice: '',
     maxParticipants: '', // 🚨 모집 인원 상태 추가
-    // 기존 address 필드를 addressData.fullAddress로 대체하거나, 둘 다 사용 가능
     address: '', // 일단 기존 폼 데이터 구조 유지
   });
 
@@ -43,6 +42,7 @@ function BoardWrite() {
 
   useEffect(() => {
     return () => {
+      // 컴포넌트 언마운트 시 URL.createObjectURL로 생성된 URL 해제
       imagePreviewUrls.forEach(URL.revokeObjectURL);
     };
   }, [imagePreviewUrls]);
@@ -51,14 +51,12 @@ function BoardWrite() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // (중략: handleImageChange, removeImage, setAsMainImage는 동일)
-
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
     const newFiles = [...selectedImages, ...files].slice(0, 5);
-    imagePreviewUrls.forEach(URL.revokeObjectURL);
+    imagePreviewUrls.forEach(URL.revokeObjectURL); // 기존 미리보기 URL 해제
     const newPreviewUrls = newFiles.map((file) => URL.createObjectURL(file));
 
     setSelectedImages(newFiles);
@@ -196,8 +194,7 @@ function BoardWrite() {
         boardImageList: imageUrls, // 업로드된 이미지 URL 배열
       };
 
-      // 3️⃣ 게시글 생성 요청 (동일)
-      // 백엔드에서 이 요청을 받으면 currentParticipants를 1로 초기화해야 합니다.
+      // 3️⃣ 게시글 생성 요청
       const response = await axiosInstance.post(
         '/api/board/create',
         boardRequest,
@@ -216,12 +213,21 @@ function BoardWrite() {
       const chatRoomName = formData.title; // 게시글 제목을 채팅방 이름으로 사용
       const chatRequestUrl = `/chat/room/group/create`;
 
-      // 백엔드 API 호출: roomName(게시글 제목), boardId(새 게시글 ID), maxParticipants 전송
+      // 4️⃣ 채팅방 개설 요청 및 Room ID 받기
       const chatRoomResponse = await axiosInstance.post(
-        // `${chatRequestUrl}?roomName=${chatRoomName}&boardId=${boardId}&maxParticipants=${maxParticipantsNum}`
         `${chatRequestUrl}?roomName=${chatRoomName}`
       );
-      console.log('채팅방 개설 성공. Room ID:', chatRoomResponse.data?.data);
+      // 서버에서 Long 타입의 roomId를 직접 반환한다고 가정합니다.
+      const newRoomId = chatRoomResponse.data;
+      console.log('채팅방 개설 성공. Room ID:', newRoomId);
+
+      // 5️⃣ ⭐️ 작성자 자동 채팅방 참여 요청 ⭐️
+      if (newRoomId) {
+        const joinResponse = await axiosInstance.post(
+          `/chat/room/group/${newRoomId}/join`
+        );
+        console.log('채팅방 참여 성공:', joinResponse.data);
+      }
 
       console.log('boardid' + boardId);
       navigate('/posts');
@@ -248,7 +254,7 @@ function BoardWrite() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50">
       <main className="py-8 sm:py-12 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto relative">
-          {/* (중략: 이모지 배경) */}
+          {/* 이모지 배경 */}
           <div className="fixed inset-0 pointer-events-none overflow-hidden">
             <div className="absolute top-20 left-4 sm:left-10 text-4xl sm:text-6xl animate-bounce opacity-20">
               🥬
@@ -276,7 +282,7 @@ function BoardWrite() {
 
             <div className="space-y-4 sm:space-y-6">
               <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-                {/* (중략: 제목, 해시태그, 이미지) */}
+                {/* 제목 */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     📦 제목
@@ -291,6 +297,7 @@ function BoardWrite() {
                   />
                 </div>
 
+                {/* 해시태그 */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     # 해시태그
@@ -310,6 +317,7 @@ function BoardWrite() {
                   </p>
                 </div>
 
+                {/* 이미지 */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     📷 상품 이미지 (최대 5개)
@@ -364,6 +372,7 @@ function BoardWrite() {
                   </div>
                 </div>
 
+                {/* 상품 설명 */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
                     상품 설명
@@ -379,6 +388,7 @@ function BoardWrite() {
                   />
                 </div>
 
+                {/* 1인당 가격 */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     💰 1인당 가격
@@ -395,7 +405,7 @@ function BoardWrite() {
                   />
                 </div>
 
-                {/* 🚨 모집 인원 입력 필드 수정: 본인 포함 총 인원으로 변경 */}
+                {/* 🚨 모집 인원 입력 필드 */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     🧑‍🤝‍🧑 총 모집 인원 (본인 포함)
@@ -456,6 +466,7 @@ function BoardWrite() {
                   )}
                 </div>
 
+                {/* 등록 버튼 */}
                 <div className="pt-4 sm:pt-6">
                   <button
                     type="submit"

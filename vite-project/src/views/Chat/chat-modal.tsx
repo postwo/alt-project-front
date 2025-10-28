@@ -1,18 +1,17 @@
-// ChatModal.tsx
-
 import React, { useState, useRef, useEffect } from 'react';
 import type { ReactElement } from 'react';
 import axiosInstance from '../../apis/axiosInstance';
 import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
+import SockJS from 'sockjs-client'; // ⭐️ SockJS import 추가
 import { useUserStore } from '../../store/userSlice';
 import { Cookies } from 'react-cookie';
 
 // 백엔드와 통신할 기본 URL 설정
 const API_BASE_URL = '/chat';
-// SockJS 사용을 위해 http:// 엔드포인트 사용
+// ⭐️ SockJS 사용을 위해 http:// 엔드포인트 사용
 const WS_URL = 'http://localhost:8080/connect';
 
+// ⭐️ Message 인터페이스
 interface Message {
   id: number;
   user: string;
@@ -21,6 +20,7 @@ interface Message {
   isSystem?: boolean;
 }
 
+// ⭐️ ChatModalProps 인터페이스
 interface ChatModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -32,6 +32,7 @@ interface ChatModalProps {
   position?: { x: number; y: number };
 }
 
+// 백엔드 ChatMessageDto 타입 (채팅 이력 응답을 위해 사용)
 interface ChatMessageDto {
   senderEmail: string;
   message: string;
@@ -39,6 +40,7 @@ interface ChatMessageDto {
 
 let stompClient: Client | null = null;
 
+// 현재 시간을 "오후 HH:MM" 형식으로 포맷하는 함수
 const getCurrentTimestamp = (): string => {
   return new Date().toLocaleTimeString('ko-KR', {
     hour: '2-digit',
@@ -47,6 +49,7 @@ const getCurrentTimestamp = (): string => {
   });
 };
 
+// ⭐️ Cookies 인스턴스 생성
 const cookies = new Cookies();
 
 // ChatModal.tsx
@@ -64,7 +67,8 @@ export default function ChatModal({
   const MY_EMAIL = myEmail;
   const MY_NICKNAME = '나';
 
-  const accessToken = cookies.get('accessToken') || '';
+  // ⭐️ JWT 토큰 가져오기
+  const accessToken = cookies.get('accessToken') || ''; // ⭐️ 수정된 부분
 
   const initialTimestamp = getCurrentTimestamp();
 
@@ -80,7 +84,6 @@ export default function ChatModal({
   ]);
 
   const [newMessage, setNewMessage] = useState('');
-  // ⭐️ 수정: 모달이 열리면 이미 참여가 확인되었다고 가정합니다.
   const [isParticipating, setIsParticipating] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -107,35 +110,33 @@ export default function ChatModal({
     console.log('ChatModal useEffect Triggered');
     console.log(`isOpen: ${isOpen}, MY_EMAIL: ${MY_EMAIL}, roomId: ${roomId}`);
 
-    // ⭐️ 추가됨: 이전 STOMP 연결이 남아있는 경우 정리
-    if (stompClient && stompClient.active) {
-      stompClient.deactivate();
-      stompClient = null;
-    }
-
     if (!isOpen || !MY_EMAIL || !roomId || roomId <= 0) {
       console.log(
         'ChatModal: 유효하지 않은 roomId 또는 로그인 정보로 인해 연결 건너뜀'
       );
+      if (stompClient) stompClient.deactivate();
       return;
     }
 
     const connectAndFetch = async (): Promise<void> => {
-      // -------------------------------------------------------------------------
-      // 🚨 핵심 수정: 채팅방 참여 API 호출 로직을 제거했습니다. (BoardDetail.tsx로 이동)
-      // -------------------------------------------------------------------------
+      // 1. 그룹 채팅방 참여 요청
+      try {
+        console.log(`채팅방 참여 요청: /room/group/${roomId}/join`);
+        await axiosInstance.post(`${API_BASE_URL}/room/group/${roomId}/join`);
+        onParticipantChange(1);
+        setIsParticipating(true); // 참여 성공
+      } catch (error) {
+        console.error('채팅방 참여 요청 실패 (WebSocket 연결 건너뜀):', error);
+        setIsParticipating(false);
+        return;
+      }
 
-      // 1. 이전 메시지 불러오기
+      // 2. 이전 메시지 불러오기 (참여 성공 후 호출)
       const fetchChatHistory = async (): Promise<void> => {
         try {
-          console.log(
-            `[API CALL] 채팅 이력 요청: ${API_BASE_URL}/history/${roomId}`
-          );
           const response = await axiosInstance.get<ChatMessageDto[]>(
             `${API_BASE_URL}/history/${roomId}`
           );
-
-          console.log(`[HISTORY] 불러온 메시지 수: ${response.data.length}`);
 
           const historyMessages: Message[] = response.data.map(
             (dto, index) => ({
@@ -151,16 +152,18 @@ export default function ChatModal({
 
           setMessages((prev) => [prev[0], ...historyMessages]);
         } catch (error) {
-          console.error('[ERROR] 채팅 이력 불러오기 실패:', error);
+          console.error('채팅 이력 불러오기 실패:', error);
         }
       };
 
-      // 2. WebSocket 연결 (STOMP + SockJS)
+      // 3. WebSocket 연결 (STOMP + SockJS)
       stompClient = new Client({
+        // ⭐️ brokerURL 대신 webSocketFactory를 사용하여 SockJS 통합
         webSocketFactory: () => {
           return new SockJS(WS_URL);
         },
 
+        // ⭐️ StompHandler에서 JWT를 검증할 수 있도록 헤더에 토큰 전달
         connectHeaders: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -170,6 +173,7 @@ export default function ChatModal({
 
           fetchChatHistory(); // 연결 성공 후 이력 불러오기
 
+          // 해당 채팅방 구독 (서버의 /topic 경로)
           stompClient!.subscribe(
             `/topic/${roomId}`,
             (message) => {
@@ -184,28 +188,23 @@ export default function ChatModal({
                 timestamp: getCurrentTimestamp(),
               };
               setMessages((prev) => [...prev, newMsg]);
-            },
+            }, // ⭐️⭐️⭐️ SUBSCRIBE 시 헤더 객체를 추가합니다 ⭐️⭐️⭐️
             {
               Authorization: `Bearer ${accessToken}`,
             }
           );
 
           // 메시지 읽음 처리 API 호출
-          console.log(
-            `[API CALL] 메시지 읽음 처리: ${API_BASE_URL}/room/${roomId}/read`
-          );
           axiosInstance.post(`${API_BASE_URL}/room/${roomId}/read`);
         },
         onStompError: (frame) => {
-          console.error(
-            '[STOMP ERROR] Broker reported error: ' + frame.headers['message']
-          );
+          console.error('Broker reported error: ' + frame.headers['message']);
           console.error('Additional details: ' + frame.body);
           alert(
             'WebSocket 연결에 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
           );
         },
-        reconnectDelay: 5000,
+        reconnectDelay: 5000, // 연결 끊김 시 5초 후 재시도
       });
 
       stompClient.activate();
@@ -215,7 +214,6 @@ export default function ChatModal({
 
     return () => {
       if (stompClient) {
-        console.log('STOMP 연결 해제');
         stompClient.deactivate();
         stompClient = null;
       }
@@ -244,14 +242,14 @@ export default function ChatModal({
       };
 
       try {
-        console.log('[STOMP PUBLISH] 메시지 전송 시도');
         stompClient.publish({
+          // 서버 설정(StompWebSocketConfig)에 맞게 /publish로 전송
           destination: `/publish/${roomId}`,
           body: JSON.stringify(chatMessageDto),
         });
         setNewMessage('');
       } catch (error) {
-        console.error('[ERROR] 메시지 전송 실패:', error);
+        console.error('메시지 전송 실패:', error);
         alert('메시지 전송에 실패했습니다. 연결 상태를 확인해주세요.');
       }
     }
@@ -264,20 +262,12 @@ export default function ChatModal({
     }
 
     try {
-      console.log(
-        `[API CALL] 채팅방 나가기 요청: ${API_BASE_URL}/room/group/${roomId}/leave`
-      );
       await axiosInstance.delete(`${API_BASE_URL}/room/group/${roomId}/leave`);
 
-      // ⭐️ 수정: isParticipating 상태를 false로 변경
       setIsParticipating(false);
       onParticipantChange(-1);
 
-      if (stompClient) {
-        console.log('STOMP 연결 해제 (나가기)');
-        stompClient.deactivate();
-        stompClient = null;
-      }
+      if (stompClient) stompClient.deactivate();
 
       const leaveMessage: Message = {
         id: messages.length + 1,
@@ -289,7 +279,7 @@ export default function ChatModal({
       setMessages((prev) => [...prev, leaveMessage]);
       onClose();
     } catch (error) {
-      console.error('[ERROR] 채팅방 나가기 실패:', error);
+      console.error('채팅방 나가기 실패:', error);
       alert('채팅방을 나가는 데 실패했습니다.');
     }
   };
@@ -360,15 +350,15 @@ export default function ChatModal({
       <div
         ref={modalRef}
         className="absolute bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden pointer-events-auto
-w-[calc(100vw-2rem)] h-[calc(100vh-6rem)] max-w-sm max-h-[600px]
-sm:w-96 sm:h-[600px]"
+      w-[calc(100vw-2rem)] h-[calc(100vh-6rem)] max-w-sm max-h-[600px]
+      sm:w-96 sm:h-[600px]"
         style={{
           left: modalPosition.x,
           top: modalPosition.y,
           cursor: isDragging ? 'grabbing' : 'default',
         }}
       >
-        {/* 헤더 (생략) */}
+        {/* 헤더 */}
         <div
           className="bg-emerald-600 text-white p-3 sm:p-4 flex items-center justify-between cursor-grab active:cursor-grabbing"
           onMouseDown={handleMouseDown}
@@ -379,7 +369,6 @@ sm:w-96 sm:h-[600px]"
               {currentParticipants}/{maxParticipants}명 참여
             </p>
           </div>
-
           <button
             onClick={onClose}
             className="text-white bg-transparent border-none text-lg ml-2"
@@ -388,7 +377,7 @@ sm:w-96 sm:h-[600px]"
             ✕
           </button>
         </div>
-        {/* 메시지 영역 (생략) */}
+        {/* 메시지 영역 */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 bg-gray-50">
           {messages.map((message) => (
             <div
@@ -412,7 +401,6 @@ sm:w-96 sm:h-[600px]"
                   </div>
                 )}
                 <div className="text-sm">{message.message}</div>
-
                 <div
                   className={`text-xs mt-1 ${
                     message.isSystem
@@ -429,7 +417,7 @@ sm:w-96 sm:h-[600px]"
           ))}
           <div ref={messagesEndRef} />
         </div>
-        {/* 입력 영역 (생략) */}
+        {/* 입력 영역 */}
         <div className="border-t border-gray-200 p-3 sm:p-4 bg-white">
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
@@ -463,7 +451,7 @@ sm:w-96 sm:h-[600px]"
 
             <button
               onClick={handleLeaveChat}
-              disabled={!MY_EMAIL || !isParticipating}
+              disabled={!MY_EMAIL}
               className="w-full border border-red-300 text-red-600 hover:bg-red-50 bg-transparent rounded py-2 text-sm disabled:border-gray-300 disabled:text-gray-500"
             >
               방 나가기

@@ -1,5 +1,6 @@
 npm install react-router-dom
 npm i jwt-decode
+npm install --save-dev @types/sockjs-client
 
 # header 에서 로그인 버튼 기능을 하게 할려면 app.tsx에서
 
@@ -50,3 +51,8 @@ createRoot(document.getElementById('root')!).render(
 );
 
 이렇게 CookiesProvider로 감싸줘야 한다
+
+# 에러 일지
+
+이미지를 수정했는데 계속 첫번째에서 깨진이미지가 먼저 나옴 이게
+이미지가 없을 때 /no-image.png 경로를 사용하고 있는데, 이 파일이 없어서 깨진 이미지가 표시되는 것 같습니다.

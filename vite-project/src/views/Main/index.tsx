@@ -10,7 +10,7 @@ function Main() {
             <div className="space-y-8">
               <div className="space-y-4">
                 <div className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
-                  🥬 1인 가구를 위한 식료품 나눔
+                  🥬 1인 가구를 위한 식료품 공동구매
                 </div>
                 <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
                   <span className="text-emerald-600">소량 구매의 고민,</span>
@@ -26,7 +26,7 @@ function Main() {
               <a href="/posts">
                 <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
                   <button className="border-2 border-emerald-400 text-emerald-700 hover:bg-emerald-50 text-lg px-8 py-4 bg-transparent rounded-full">
-                    나눔 게시글 둘러보기
+                    공동구매 게시글 둘러보기
                   </button>
                 </div>
               </a>
@@ -102,7 +102,7 @@ function Main() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center space-y-4 mb-16">
             <h2 className="text-4xl font-bold text-gray-900">
-              왜 알뜰모아 식료품 나눔인가요?
+              왜 알뜰모아 식료품 공동구매 인가요?
             </h2>
             <p className="text-xl text-gray-600">
               1인 가구를 위한 스마트한 식료품 쇼핑
@@ -133,7 +133,8 @@ function Main() {
                   채팅으로 간편하게
                 </h3>
                 <p className="text-gray-600">
-                  채팅방에서 실시간으로 소통하며 나눔 일정과 장소를 조율하세요.
+                  채팅방에서 실시간으로 소통하며 공동구매 일정과 장소를
+                  조율하세요.
                 </p>
               </div>
             </div>
@@ -160,10 +161,10 @@ function Main() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center space-y-4 mb-16">
             <h2 className="text-4xl font-bold text-gray-900">
-              진행 중인 식료품 나눔
+              진행 중인 식료품 공동구매
             </h2>
             <p className="text-xl text-gray-600">
-              지금 참여할 수 있는 신선한 식재료 나눔
+              지금 참여할 수 있는 신선한 식재료 공동구매
             </p>
           </div>
 
@@ -173,7 +174,7 @@ function Main() {
                 {/* Ensure these image paths are correct relative to your project's public directory or asset folder */}
                 <img
                   src="/fresh-organic-vegetables-cabbage-lettuce-carrots.png"
-                  alt="유기농 야채 세트 나눔"
+                  alt="유기농 야채 세트 공동구매"
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                 />
               </div>
@@ -217,7 +218,7 @@ function Main() {
               <div className="aspect-video overflow-hidden">
                 <img
                   src="/fresh-fruits-apples-oranges-bananas.png"
-                  alt="제철 과일 박스 나눔"
+                  alt="제철 과일 박스 공동구매"
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                 />
               </div>
@@ -260,7 +261,7 @@ function Main() {
               <div className="aspect-video overflow-hidden">
                 <img
                   src="/bulk-rice-grains-10kg-bag.png"
-                  alt="쌀 10kg 나눔"
+                  alt="쌀 10kg 공동구매"
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                 />
               </div>
@@ -303,7 +304,7 @@ function Main() {
           <div className="text-center mt-12">
             <a href="/posts">
               <button className="border-2 border-emerald-400 text-emerald-600 bg-transparent hover:bg-emerald-50 px-8 py-3 rounded-full font-medium transition-colors">
-                더 많은 나눔 보기
+                더 많은 공동구매 보기
               </button>
             </a>
           </div>
@@ -314,7 +315,7 @@ function Main() {
       <section className="py-20 px-6 bg-gradient-to-r from-emerald-600 to-emerald-700">
         <div className="max-w-4xl mx-auto text-center space-y-8">
           <h2 className="text-4xl font-bold text-white">
-            지금 식료품 나눔에 참여하세요
+            지금 식료품 공동구매에 참여하세요
           </h2>
           <p className="text-xl text-emerald-100">
             1인 가구도 부담 없이 신선한 식재료를 나눠 사는 즐거움을 경험해보세요

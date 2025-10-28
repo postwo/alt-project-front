@@ -3,7 +3,6 @@ import './App.css';
 import Main from './views/Main';
 import BoardDetail from './views/Board/Detail';
 import BoardWrite from './views/Board/Write';
-import BoardUpdate from './views/Board/Update';
 import Container from './layouts/Container';
 import Login from './views/Member/login';
 import SignUp from './views/Member/signup';
@@ -16,6 +15,7 @@ import GoogleRedirectHandler from './views/oauth/GoogleRedirectHandler';
 import Posts from './views/Posts/PostsPage';
 import ChatModal from './views/Chat/chat-modal';
 import ChatModalWrapper from './views/Chat/ChatModalWrapper';
+import MyPage from './views/Member/myPage';
 
 const cookies = new Cookies();
 
@@ -50,13 +50,14 @@ function App() {
         <Route path="/admin" element={<Admin />} /> {/* 관리자 페이지 */}
         <Route path="/posts" element={<Posts />} /> {/* 게시글 목록 페이지 */}
         <Route path="/chat" element={<ChatModalWrapper />} /> {/* 채팅 모달 */}
+        <Route path="/mypage" element={<MyPage />} /> {/* 마이페이지 */}
         <Route path="/board">
           {/* 게시글 상세보기 */}
           <Route path=":boardNumber" element={<BoardDetail />} />
           {/* 게시글 작성 페이지 */}
           <Route path="create-post" element={<BoardWrite />} />
           {/* 게시글 수정 페이지 */}
-          <Route path="update/:boardNumber" element={<BoardUpdate />} />
+          {/* <Route path="update/:boardNumber" element={<BoardUpdate />} /> */}
         </Route>
       </Route>
     </Routes>

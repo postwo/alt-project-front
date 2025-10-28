@@ -298,7 +298,7 @@ const Posts: React.FC = () => {
                     />
                     <div className="absolute top-3 left-3">
                       <span className="inline-flex items-center justify-center font-medium rounded-full bg-emerald-600 text-white text-xs px-3 py-1 shadow-md">
-                        나눔
+                        공동구매
                       </span>
                     </div>
                   </div>

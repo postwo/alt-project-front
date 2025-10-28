@@ -8,7 +8,7 @@ const cookies = new Cookies();
 
 interface UserState {
   email: string | null;
-  //   nickname: string | null;
+  nickname: string | null;
   memberRoleList: string[] | null;
   isAuthenticated: boolean | null; // 로그인 상태
   setUserFromToken: (token: string) => void;
@@ -27,14 +27,14 @@ export const useUserStore = create<UserState>((set) => ({
       const decoded: any = jwtDecode(token); // jwtDecode 타입이 any일 수 있음
       set({
         email: decoded.sub,
-        // nickname: decoded.nickname ?? null,
+        nickname: decoded.nickname ?? null,
         memberRoleList: decoded.role ?? null,
         isAuthenticated: true,
       });
     } catch {
       set({
         email: null,
-        // nickname: null,
+        nickname: null,
         memberRoleList: null,
         isAuthenticated: false,
       });
@@ -45,7 +45,7 @@ export const useUserStore = create<UserState>((set) => ({
     cookies.remove('accessToken', { path: '/' });
     set({
       email: null,
-      //   nickname: null,
+      nickname: null,
       memberRoleList: null,
       isAuthenticated: false,
     });

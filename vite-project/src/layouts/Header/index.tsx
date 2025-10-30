@@ -39,12 +39,21 @@ export default function Header() {
         isAuthPage ? 'justify-start' : 'justify-between max-w-7xl mx-auto'
       }`}
     >
-      <Link to="/" className="flex items-center space-x-2">
-        <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
-          <span className="text-white font-bold text-sm">알</span>
+      {pathname === '/admin' ? (
+        <div className="flex items-center space-x-2 cursor-default">
+          <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">알</span>
+          </div>
+          <span className="text-2xl font-bold text-emerald-800">알뜰모아</span>
         </div>
-        <span className="text-2xl font-bold text-emerald-800">알뜰모아</span>
-      </Link>
+      ) : (
+        <Link to="/" className="flex items-center space-x-2">
+          <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">알</span>
+          </div>
+          <span className="text-2xl font-bold text-emerald-800">알뜰모아</span>
+        </Link>
+      )}
 
       {!isAuthPage && (
         <div className="flex items-center space-x-4">

@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../apis/axiosInstance';
+import { useUserStore } from '../../store/userSlice';
 
 // 관리자 통계 데이터
 interface AdminStats {
@@ -63,7 +65,24 @@ const getTimeUntilDeadline = (deadline: string) => {
   return { isExpired: false, timeText: `${minutes}분 남음` };
 };
 
-export default function AdminPage() {
+export default function Admin() {
+  const navigate = useNavigate();
+  const { isAuthenticated, role, isAuthLoading } = useUserStore();
+
+  useEffect(() => {
+    // 인증 상태 로딩이 끝나면 접근 권한을 확인합니다.
+    if (!isAuthLoading) {
+      if (!isAuthenticated || role !== 'ADMIN') {
+        alert('접근 권한이 없습니다.');
+        navigate('/');
+      }
+    }
+  }, [isAuthenticated, role, isAuthLoading, navigate]);
+
+  // isAuthLoading이 true이거나, 인증되지 않았거나, ADMIN이 아닌 경우
+  // 실제 대시보드 내용을 렌더링하지 않고 로딩 또는 빈 화면을 보여줍니다.
+  if (isAuthLoading || !isAuthenticated || role !== 'ADMIN') return null;
+
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');

@@ -187,30 +187,12 @@ function Main() {
                     <span>3명 참여</span>
                   </div>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">
-                  유기농 야채 세트 (5kg)
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500">총 가격 ₩25,000</span>
-                    <span className="text-emerald-600 font-bold">
-                      1인당 ₩5,000
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-emerald-500 h-2 rounded-full"
-                      style={{ width: '60%' }}
-                    ></div>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-gray-600">
-                    <span>3/5명 모집</span>
-                    <span>내일 수령</span>
-                  </div>
-                </div>
-                <button className="w-full bg-emerald-600 hover:bg-emerald-700 py-3 px-6 rounded-lg text-white font-medium transition-colors">
+                <Link
+                  to="/chat"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 py-3 px-6 rounded-lg text-white font-medium transition-colors text-center"
+                >
                   채팅방 참여하기
-                </button>
+                </Link>
               </div>
             </div>
 

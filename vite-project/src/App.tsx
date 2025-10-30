@@ -28,8 +28,8 @@ function App() {
     if (token) {
       setUserFromToken(token);
     } else {
-      // ⭐️ 토큰이 없으면 명시적으로 false로 설정
-      useUserStore.setState({ isAuthenticated: false });
+      // ⭐️ 토큰이 없으면 로딩을 끝내고 비로그인 상태로 확정합니다.
+      useUserStore.setState({ isAuthenticated: false, isAuthLoading: false });
     }
   }, [setUserFromToken]);
 

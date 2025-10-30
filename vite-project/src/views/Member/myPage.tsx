@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import axiosInstance from '../../apis/axiosInstance'; // axiosInstance 경로에 맞게 수정해주세요.
 import { useNavigate } from 'react-router-dom';
 import { useDaumPostcodePopup } from 'react-daum-postcode';
+import { useUserStore } from '../../store/userSlice'; // 💡 1. Zustand store를 import 합니다.
 
 // API 응답 데이터의 타입을 명확히 하기 위한 인터페이스 정의
 interface ProfileData {
@@ -52,6 +53,9 @@ const extractSigungu = (fullAddress: string): string => {
 };
 
 export default function MyPage() {
+  // 💡 2. Zustand store에서 닉네임 변경 함수를 가져옵니다.
+  const { setNickname } = useUserStore();
+
   // --- 상태 관리 ---
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [myPosts, setMyPosts] = useState<Post[]>([]);
@@ -158,6 +162,9 @@ export default function MyPage() {
       // 서버로부터 받은 최신 데이터로 상태 업데이트
       const updatedProfile = response.data.data;
       setProfile(updatedProfile);
+      // 💡 3. Zustand store의 닉네임도 함께 업데이트합니다.
+      setNickname(updatedProfile.nickname);
+
       setIsEditingProfile(false);
       alert('프로필이 성공적으로 저장되었습니다.');
     } catch (error) {

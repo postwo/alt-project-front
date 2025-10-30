@@ -69,20 +69,6 @@ export default function Admin() {
   const navigate = useNavigate();
   const { isAuthenticated, role, isAuthLoading } = useUserStore();
 
-  useEffect(() => {
-    // 인증 상태 로딩이 끝나면 접근 권한을 확인합니다.
-    if (!isAuthLoading) {
-      if (!isAuthenticated || role !== 'ADMIN') {
-        alert('접근 권한이 없습니다.');
-        navigate('/');
-      }
-    }
-  }, [isAuthenticated, role, isAuthLoading, navigate]);
-
-  // isAuthLoading이 true이거나, 인증되지 않았거나, ADMIN이 아닌 경우
-  // 실제 대시보드 내용을 렌더링하지 않고 로딩 또는 빈 화면을 보여줍니다.
-  if (isAuthLoading || !isAuthenticated || role !== 'ADMIN') return null;
-
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
@@ -97,29 +83,57 @@ export default function Admin() {
   const [posts, setPosts] = useState<Post[]>([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // 여러 API를 동시에 호출
-        const [statsRes, usersRes, postsRes] = await Promise.all([
-          axiosInstance.get('/api/admin/stats'), // 통계 API 엔드포인트 (예시)
-          axiosInstance.get('/api/admin/users'), // 사용자 목록 API 엔드포인트 (예시)
-          axiosInstance.get('/api/admin/posts'), // 게시글 목록 API 엔드포인트 (예시)
-        ]);
-
-        setAdminStats(statsRes.data.data);
-        setUsers(usersRes.data.data);
-        setPosts(postsRes.data.data);
-      } catch (error) {
-        console.error('관리자 데이터를 불러오는 데 실패했습니다:', error);
-        alert('데이터를 불러오는 데 실패했습니다.');
-      } finally {
-        setLoading(false);
+    // 인증 상태 로딩이 끝나면 접근 권한을 확인합니다.
+    if (!isAuthLoading) {
+      if (!isAuthenticated || role !== 'ADMIN') {
+        alert('접근 권한이 없습니다.');
+        navigate('/');
       }
-    };
+    }
+  }, [isAuthenticated, role, isAuthLoading, navigate]);
 
-    fetchData();
-  }, []);
+  useEffect(() => {
+    // 인증이 완료되고 관리자 권한이 있을 때만 데이터를 가져옵니다.
+    if (!isAuthLoading && isAuthenticated && role === 'ADMIN') {
+      const fetchData = async () => {
+        setLoading(true);
+        try {
+          // 여러 API를 동시에 호출
+          const [statsRes, usersRes, postsRes] = await Promise.all([
+            axiosInstance.get('/api/admin/stats'),
+            axiosInstance.get('/api/admin/users'),
+            axiosInstance.get('/api/admin/posts'),
+          ]);
+
+          setAdminStats(statsRes.data.data);
+          setUsers(usersRes.data.data);
+          setPosts(postsRes.data.data);
+        } catch (error) {
+          console.error('관리자 데이터를 불러오는 데 실패했습니다:', error);
+          alert('데이터를 불러오는 데 실패했습니다.');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchData();
+    }
+  }, [isAuthLoading, isAuthenticated, role]); // 인증 상태가 변경될 때마다 데이터 로딩을 재시도합니다.
+
+  // 인증 상태를 확인하는 동안 로딩 UI를 보여줍니다.
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">사용자 정보를 확인하는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 인증이 완료되었지만 권한이 없는 경우, 아무것도 렌더링하지 않습니다. (useEffect에서 리디렉션 처리)
+  if (!isAuthenticated || role !== 'ADMIN') return null;
 
   const handleUserAction = (
     userId: number,

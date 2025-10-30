@@ -2,6 +2,11 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Cookies, useCookies } from 'react-cookie';
 import { useUserStore } from '../../store/userSlice';
+import { jwtDecode, type JwtPayload } from 'jwt-decode';
+
+interface DecodedToken extends JwtPayload {
+  role?: 'USER' | 'ADMIN';
+}
 
 function KakaoRedirectHandler() {
   const navigate = useNavigate();
@@ -25,14 +30,24 @@ function KakaoRedirectHandler() {
         maxAge: 60 * 60 * 24, // 1일 유지
       });
 
-      // zustand store에도 반영
+      // 1. zustand store에도 반영
       setUserFromToken(accessToken);
 
-      // 토큰을 쿠키에 저장한 후 URL의 쿼리 파라미터를 제거
-      // 이 부분이 중요합니다. URL에 토큰이 남아있지 않게 하여 재렌더링 시 문제 방지
+      // 2. 토큰을 쿠키에 저장한 후 URL의 쿼리 파라미터를 제거
       window.history.replaceState({}, document.title, window.location.pathname);
 
-      navigate('/');
+      // 3. 토큰을 디코딩하여 역할에 따라 리디렉션
+      try {
+        const decoded: DecodedToken = jwtDecode(accessToken);
+        if (decoded.role === 'ADMIN') {
+          navigate('/admin'); // ADMIN이면 관리자 페이지로 이동
+        } else {
+          navigate('/'); // 그 외에는 메인 페이지로 이동
+        }
+      } catch (e) {
+        console.error('토큰 디코딩 실패:', e);
+        navigate('/'); // 디코딩 실패 시 기본 페이지로 이동
+      }
     } else {
       navigate('/login');
     }

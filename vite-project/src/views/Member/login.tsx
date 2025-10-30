@@ -1,11 +1,15 @@
 import axios from 'axios';
-import { jwtDecode } from 'jwt-decode';
+import { jwtDecode, type JwtPayload } from 'jwt-decode';
 import { useState } from 'react';
 import { Cookies, useCookies } from 'react-cookie';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUserStore } from '../../store/userSlice';
 import kakaoLoginImg from '../../assets/kakao_login_medium_narrow.png';
 import googleLoginImg from '../../assets/google_login.png';
+
+interface DecodedToken extends JwtPayload {
+  role?: 'USER' | 'ADMIN';
+}
 
 function Login() {
   const setUserFromToken = useUserStore((state) => state.setUserFromToken);
@@ -51,11 +55,22 @@ function Login() {
 
       const token = response.data.data.accessToken;
 
-      setUserFromToken(token);
-      alert('로그인 성공!' + response.data.data.accessToken);
+      if (token) {
+        setUserFromToken(token);
+        alert('로그인 성공!');
 
-      // 로그인 성공 시 홈으로 이동
-      navigate('/');
+        try {
+          const decoded: DecodedToken = jwtDecode(token);
+          if (decoded.role === 'ADMIN') {
+            navigate('/admin');
+          } else {
+            navigate('/');
+          }
+        } catch (e) {
+          console.error('토큰 디코딩 실패:', e);
+          navigate('/'); // 디코딩 실패 시 기본 페이지로 이동
+        }
+      }
     } catch (error: any) {
       console.error('로그인 실패:', error.response?.data || error.message);
       alert('로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.');

@@ -108,7 +108,7 @@ export default function MyPage() {
             `/api/board/user-board-list/${profileData.email}`
           );
           setMyPosts(
-            (myPostsResponse.data.data || []).map((post: any) => ({
+            (myPostsResponse.data?.data || []).map((post: any) => ({
               ...post,
               currentParticipants: post.currentParticipants || 1, // API 응답에 없으면 기본값 1 (작성자 본인)
               maxParticipants: post.maxParticipants || 4, // API 응답에 없으면 기본값 4
@@ -125,7 +125,7 @@ export default function MyPage() {
             '/api/board/participated-boards'
           );
           setParticipatedPosts(
-            (participatedPostsResponse.data.data || []).map((post: any) => ({
+            (participatedPostsResponse.data?.data || []).map((post: any) => ({
               ...post,
               currentParticipants: post.currentParticipants || 1, // API 응답에 없으면 기본값 1
               maxParticipants: post.maxParticipants || 4, // API 응답에 없으면 기본값 4

@@ -51,6 +51,7 @@ function App() {
         <Route path="/posts" element={<Posts />} /> {/* 게시글 목록 페이지 */}
         <Route path="/chat" element={<ChatModalWrapper />} /> {/* 채팅 모달 */}
         <Route path="/mypage" element={<MyPage />} /> {/* 마이페이지 */}
+        <Route path="/admin" element={<Admin />} /> {/* 관리자 페이지 */}
         <Route path="/board">
           {/* 게시글 상세보기 */}
           <Route path=":boardNumber" element={<BoardDetail />} />

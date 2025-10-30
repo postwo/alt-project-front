@@ -8,7 +8,8 @@ import kakaoLoginImg from '../../assets/kakao_login_medium_narrow.png';
 import googleLoginImg from '../../assets/google_login.png';
 
 interface DecodedToken extends JwtPayload {
-  role?: 'USER' | 'ADMIN';
+  role?: 'USER' | 'ADMIN' | string[]; // 일반 로그인용 (단수형)
+  roles?: 'USER' | 'ADMIN' | string[]; // 소셜 로그인용 (복수형) 또는 백엔드 설정에 따라
 }
 
 function Login() {
@@ -61,7 +62,12 @@ function Login() {
 
         try {
           const decoded: DecodedToken = jwtDecode(token);
-          if (decoded.role === 'ADMIN') {
+          // 'roles' 필드를 우선적으로 확인하고, 없으면 'role' 필드를 사용합니다.
+          const roleSource = decoded.roles || decoded.role;
+          const userRole = Array.isArray(roleSource)
+            ? roleSource[0]
+            : roleSource;
+          if (userRole === 'ADMIN') {
             navigate('/admin');
           } else {
             navigate('/');

@@ -27,11 +27,13 @@ export const useUserStore = create<UserState>((set) => ({
   setUserFromToken: (token: string) => {
     try {
       const decoded: any = jwtDecode(token); // jwtDecode 타입이 any일 수 있음
+      // 'roles' 필드를 우선적으로 확인하고, 없으면 'role' 필드를 사용합니다.
+      const roleSource = decoded.roles || decoded.role;
       set({
         email: decoded.sub,
         nickname: decoded.nickname,
-        // 토큰의 role이 배열이면 첫 번째 요소를, 문자열이면 그대로 사용합니다.
-        role: Array.isArray(decoded.role) ? decoded.role[0] : decoded.role,
+        // 역할 정보가 배열이면 첫 번째 요소를, 문자열이면 그대로 사용합니다.
+        role: Array.isArray(roleSource) ? roleSource[0] : roleSource,
         isAuthenticated: true,
         isAuthLoading: false, // 로딩 완료
       });

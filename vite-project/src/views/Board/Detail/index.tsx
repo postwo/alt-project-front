@@ -1,6 +1,6 @@
 // BoardDetail.tsx
 
-import { useEffect, useState, useRef } from 'react'; // 👈 1. useRef를 import에 추가합니다.
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ChatModal from '../../Chat/chat-modal';
 import axiosInstance from '../../../apis/axiosInstance';
@@ -18,6 +18,7 @@ interface Post {
   imageUrls: string[];
   writerEmail?: string;
   chatRoomId: number;
+  liked?: boolean; // 👈 백엔드에서 'liked'로 보내고 있음
 }
 
 // API BASE URL 정의 (ChatModal에서도 사용)
@@ -35,7 +36,7 @@ const reportReasons = {
 function BoardDetail() {
   const params = useParams();
   const navigate = useNavigate();
-  const postId = Number(params.boardNumber);
+  const boardId = Number(params.boardNumber);
   const { isAuthenticated, email } = useUserStore();
 
   const [post, setPost] = useState<Post | null>(null);
@@ -50,18 +51,25 @@ function BoardDetail() {
   const [reportReason, setReportReason] = useState<string>('');
   const [reportDetails, setReportDetails] = useState('');
 
-  // 👈 2. StrictMode에서도 API가 딱 한 번만 호출되도록 보장하는 '문지기'를 세웁니다.
+  // StrictMode에서도 API가 딱 한 번만 호출되도록 보장하는 '문지기'
   const isInitialLoad = useRef(true);
 
-  // 👈 3. 게시글 데이터 조회 및 조회수 증가 로직을 역할에 따라 분리합니다.
+  // 게시글 데이터 조회 및 조회수 증가 로직을 역할에 따라 분리
   useEffect(() => {
     // 순수하게 데이터만 가져오는 함수
     const fetchPostData = async () => {
       try {
-        // 이 API는 이제 조회수 증가 기능이 없다고 가정합니다.
-        // API 경로를 일관성 있게 'board'로 수정하는 것을 권장합니다.
-        const response = await axiosInstance.get(`/api/board/detail/${postId}`);
-        setPost(response.data?.data || null);
+        const response = await axiosInstance.get(
+          `/api/board/detail/${boardId}`
+        );
+        const postData = response.data?.data || null;
+        setPost(postData);
+
+        // 👈 백엔드에서 'liked'로 보내므로 liked 사용
+        if (postData && postData.liked !== undefined) {
+          setIsLiked(postData.liked);
+        }
+
         setCurrentImageIndex(0);
       } catch (error) {
         console.error('게시글 불러오기 실패:', error);
@@ -75,24 +83,19 @@ function BoardDetail() {
     // 조회수만 1 증가시키는 함수
     const incrementViewCount = async () => {
       try {
-        // PATCH 메소드를 사용하여 리소스의 일부(조회수)만 수정합니다.
-        await axiosInstance.patch(`/api/board/${postId}/view`);
+        await axiosInstance.patch(`/api/board/${boardId}/view`);
       } catch (error) {
         console.error('조회수 증가 요청 실패:', error);
-        // 사용자에게 조회수 증가 실패를 굳이 알릴 필요는 없습니다.
       }
     };
 
-    // 👈 '문지기'가 처음이라고 할 때만 두 API를 각각 한 번씩 호출합니다.
+    // '문지기'가 처음이라고 할 때만 두 API를 각각 한 번씩 호출
     if (isInitialLoad.current) {
-      fetchPostData(); // 데이터 가져오기 요청
-      incrementViewCount(); // 조회수 증가 요청
-
-      // '문지기'에게 이제 처음이 아니라고 알려줍니다.
-      // 리액트가 이 컴포넌트를 다시 렌더링해도 이 블록은 더 이상 실행되지 않습니다.
+      fetchPostData();
+      incrementViewCount();
       isInitialLoad.current = false;
     }
-  }, [postId, navigate]); // 의존성 배열은 그대로 유지합니다.
+  }, [boardId, navigate]);
 
   // 이미지 배열 길이가 변경되면 인덱스 초기화
   useEffect(() => {
@@ -110,8 +113,7 @@ function BoardDetail() {
       return;
     }
     try {
-      // API 경로를 일관성 있게 'board'로 수정하는 것을 권장합니다.
-      await axiosInstance.delete(`/api/board/delete/${postId}`);
+      await axiosInstance.delete(`/api/board/delete/${boardId}`);
       alert('게시글이 삭제되었습니다.');
       navigate('/posts');
     } catch (error) {
@@ -122,7 +124,7 @@ function BoardDetail() {
 
   // 게시글 수정 페이지로 이동
   const handleEdit = () => {
-    navigate(`/board/edit/${postId}`);
+    navigate(`/board/edit/${boardId}`);
   };
 
   // 좋아요 처리
@@ -133,8 +135,7 @@ function BoardDetail() {
       return;
     }
     try {
-      // API 경로를 일관성 있게 'board'로 수정하는 것을 권장합니다.
-      await axiosInstance.post(`/api/board/${postId}/favorite`);
+      await axiosInstance.put(`/api/board/${boardId}/favorite`);
       setIsLiked(!isLiked);
       setPost((prev) =>
         prev
@@ -202,7 +203,7 @@ function BoardDetail() {
     setIsChatOpen(true);
   };
 
-  // 신고 버튼 클릭 핸들러 (핵심 로직)
+  // 신고 버튼 클릭 핸들러
   const handleReportButtonClick = () => {
     if (!isAuthenticated) {
       alert('로그인이 필요한 기능입니다.');
@@ -231,8 +232,7 @@ function BoardDetail() {
     }
 
     try {
-      // API 경로를 일관성 있게 'board'로 수정하는 것을 권장합니다.
-      await axiosInstance.post(`/api/board/${postId}/report`, {
+      await axiosInstance.post(`/api/board/${boardId}/report`, {
         reason: reportReason,
         details: reportDetails,
       });
@@ -250,7 +250,6 @@ function BoardDetail() {
     }
   };
 
-  // ... (if (loading), if (!post) 등 나머지 JSX 부분은 모두 동일합니다)
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-100">
@@ -318,7 +317,7 @@ function BoardDetail() {
               {/* 작성자가 아닌 사용자에게만 보이는 신고 버튼 */}
               {!isAuthor && (
                 <button
-                  onClick={handleReportButtonClick} // 로그인 체크 로직이 포함된 핸들러 호출
+                  onClick={handleReportButtonClick}
                   className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm transition-colors"
                 >
                   신고

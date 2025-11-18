@@ -15,16 +15,18 @@ interface AdminStats {
   monthlyGrowth: number;
 }
 
-interface User {
+// 백엔드 DTO와 동기화된 사용자 인터페이스
+interface MemberResponseDto {
   id: number;
-  name: string;
   email: string;
-  joinDate: string;
-  postsCount: number;
-  participationCount: number;
-  status: 'active' | 'suspended';
-  profileImage: string;
-  location: string;
+  nickname: string;
+  createdAt: string; // ISO 8601 형식의 문자열 (e.g., "2025-11-18T09:52:47.123456")
+  status: 'ACTIVE' | 'SUSPENDED' | 'DELETED'; // 백엔드 Enum 값과 일치
+  boardCount: number;
+  chatRoomCount: number;
+  // DTO에 없는 필드는 optional 또는 placeholder 처리
+  profileImage?: string;
+  location?: string;
 }
 
 interface Post {
@@ -42,7 +44,9 @@ interface Post {
   reportCount: number;
 }
 
-const getTimeUntilDeadline = (deadline: string) => {
+const getTimeUntilDeadline = (
+  deadline: string
+): { isExpired: boolean; timeText: string } => {
   const now = new Date();
   const deadlineDate = new Date(deadline);
   const diff = deadlineDate.getTime() - now.getTime();
@@ -65,21 +69,35 @@ const getTimeUntilDeadline = (deadline: string) => {
   return { isExpired: false, timeText: `${minutes}분 남음` };
 };
 
-export default function Admin() {
+// 날짜 포맷팅 함수
+const formatDate = (dateString: string): string => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+};
+
+const Admin: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, role, isAuthLoading } = useUserStore();
 
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [selectedPost, setSelectedPost] = useState<any>(null);
-  const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
-  const [isPostDialogOpen, setIsPostDialogOpen] = useState(false);
+  const [loading, setLoading] = useState<boolean>(true); // 초기 데이터(통계, 게시글) 로딩 상태
+  const [isUsersLoading, setIsUsersLoading] = useState<boolean>(false); // 사용자 데이터 로딩 상태
+  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [selectedUser, setSelectedUser] = useState<MemberResponseDto | null>(
+    null
+  );
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [isUserDialogOpen, setIsUserDialogOpen] = useState<boolean>(false);
+  const [isPostDialogOpen, setIsPostDialogOpen] = useState<boolean>(false);
 
   // API 데이터 상태
   const [adminStats, setAdminStats] = useState<AdminStats | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<MemberResponseDto[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
 
   useEffect(() => {
@@ -92,33 +110,58 @@ export default function Admin() {
     }
   }, [isAuthenticated, role, isAuthLoading, navigate]);
 
+  // --- 1. 초기 데이터(통계, 게시글) 로딩 ---
   useEffect(() => {
     // 인증이 완료되고 관리자 권한이 있을 때만 데이터를 가져옵니다.
     if (!isAuthLoading && isAuthenticated && role === 'ADMIN') {
-      const fetchData = async () => {
+      const fetchInitialData = async () => {
         setLoading(true);
         try {
-          // 여러 API를 동시에 호출
-          const [statsRes, usersRes, postsRes] = await Promise.all([
+          // 통계와 게시글 API만 먼저 호출
+          const [statsRes, postsRes] = await Promise.all([
             axiosInstance.get('/api/admin/stats'),
-            axiosInstance.get('/api/admin/users'),
             axiosInstance.get('/api/admin/posts'),
           ]);
 
           setAdminStats(statsRes.data.data);
-          setUsers(usersRes.data.data);
           setPosts(postsRes.data.data);
         } catch (error) {
-          console.error('관리자 데이터를 불러오는 데 실패했습니다:', error);
+          console.error(
+            '초기 관리자 데이터를 불러오는 데 실패했습니다:',
+            error
+          );
           alert('데이터를 불러오는 데 실패했습니다.');
         } finally {
           setLoading(false);
         }
       };
 
-      fetchData();
+      fetchInitialData();
     }
-  }, [isAuthLoading, isAuthenticated, role]); // 인증 상태가 변경될 때마다 데이터 로딩을 재시도합니다.
+  }, [isAuthLoading, isAuthenticated, role]);
+
+  // --- 2. '사용자 관리' 탭 클릭 시 사용자 데이터 로딩 ---
+  useEffect(() => {
+    // 'users' 탭이 활성화되었고, 아직 사용자 데이터를 불러온 적이 없을 때만 실행
+    if (activeTab === 'users' && users.length === 0) {
+      const fetchUsers = async () => {
+        setIsUsersLoading(true);
+        try {
+          const usersRes = await axiosInstance.get<MemberResponseDto[]>(
+            '/api/admin/members'
+          );
+          setUsers(usersRes.data);
+        } catch (error) {
+          console.error('사용자 목록을 불러오는 데 실패했습니다:', error);
+          alert('사용자 목록을 불러오는 데 실패했습니다.');
+        } finally {
+          setIsUsersLoading(false);
+        }
+      };
+
+      fetchUsers();
+    }
+  }, [activeTab, users.length]); // activeTab이 변경될 때마다 이 효과를 재평가
 
   // 인증 상태를 확인하는 동안 로딩 UI를 보여줍니다.
   if (isAuthLoading) {
@@ -135,12 +178,37 @@ export default function Admin() {
   // 인증이 완료되었지만 권한이 없는 경우, 아무것도 렌더링하지 않습니다. (useEffect에서 리디렉션 처리)
   if (!isAuthenticated || role !== 'ADMIN') return null;
 
-  const handleUserAction = (
-    userId: number,
-    action: 'suspend' | 'activate' | 'delete'
-  ) => {
-    console.log(`User ${userId} action: ${action}`);
-    // 실제 구현에서는 API 호출
+  const handleUserAction = (userId: number, action: 'suspend' | 'activate') => {
+    const actionText = action === 'suspend' ? '정지' : '활성화';
+    const userNickname = users.find((u) => u.id === userId)?.nickname;
+    const confirmMessage =
+      action === 'suspend'
+        ? `${userNickname}님의 계정을 정지하시겠습니까? 모든 활동이 제한됩니다.`
+        : `${userNickname}님의 계정을 다시 활성화하시겠습니까?`;
+
+    if (window.confirm(confirmMessage)) {
+      const request = async () => {
+        try {
+          await axiosInstance.patch(`/api/admin/members/${userId}/${action}`);
+          alert(`사용자 계정이 성공적으로 ${actionText}되었습니다.`);
+          // UI 즉시 업데이트
+          setUsers(
+            users.map((user) =>
+              user.id === userId
+                ? {
+                    ...user,
+                    status: action === 'suspend' ? 'SUSPENDED' : 'ACTIVE',
+                  }
+                : user
+            )
+          );
+        } catch (error) {
+          console.error(`사용자 계정 ${actionText} 처리 중 오류 발생:`, error);
+          alert(`사용자 계정 ${actionText}에 실패했습니다.`);
+        }
+      };
+      request();
+    }
   };
 
   const handlePostAction = (
@@ -153,7 +221,7 @@ export default function Admin() {
 
   const filteredUsers = users.filter(
     (user) =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.nickname.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -292,7 +360,7 @@ export default function Admin() {
 
             {/* 개요 탭 */}
             {activeTab === 'overview' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 {/* 최근 활동 */}
                 <div className="bg-white/80 backdrop-blur-sm border rounded-lg shadow-md">
                   <div className="p-6">
@@ -384,7 +452,9 @@ export default function Admin() {
                       <input
                         placeholder="사용자 검색..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setSearchTerm(e.target.value)
+                        }
                         className="pl-10 w-full sm:w-64 border rounded-md p-2"
                       />
                     </div>
@@ -392,224 +462,237 @@ export default function Admin() {
                 </div>
                 <div className="p-6 pt-0">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-500">
-                      <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr>
-                          <th scope="col" className="px-6 py-3">
-                            사용자
-                          </th>
-                          <th scope="col" className="px-6 py-3">
-                            가입일
-                          </th>
-                          <th scope="col" className="px-6 py-3">
-                            활동
-                          </th>
-                          <th scope="col" className="px-6 py-3">
-                            상태
-                          </th>
-                          <th scope="col" className="px-6 py-3">
-                            작업
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredUsers.length === 0 ? (
+                    {/* --- 3. 사용자 목록 로딩 UI --- */}
+                    {isUsersLoading ? (
+                      <div className="min-h-[300px] flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                          <p className="text-gray-600">
+                            사용자 목록을 불러오는 중...
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <table className="w-full text-sm text-left text-gray-500">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                           <tr>
-                            <td
-                              colSpan={5}
-                              className="text-center py-10 text-gray-500"
-                            >
-                              <div className="text-2xl mb-2">🤷</div>
-                              검색 결과와 일치하는 사용자가 없습니다.
-                            </td>
+                            <th scope="col" className="px-6 py-3">
+                              사용자
+                            </th>
+                            <th scope="col" className="px-6 py-3">
+                              가입일
+                            </th>
+                            <th scope="col" className="px-6 py-3">
+                              활동
+                            </th>
+                            <th scope="col" className="px-6 py-3">
+                              상태
+                            </th>
+                            <th scope="col" className="px-6 py-3">
+                              작업
+                            </th>
                           </tr>
-                        ) : (
-                          <></>
-                        )}
-                        {filteredUsers.map((user) => (
-                          <tr key={user.id} className="bg-white border-b">
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                                  <img
-                                    src={
-                                      user.profileImage || '/placeholder.svg'
-                                    }
-                                    alt={user.name}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) =>
-                                      (e.currentTarget.style.display = 'none')
-                                    }
-                                  />
-                                </div>
-                                <div>
-                                  <p className="font-medium text-sm">
-                                    {user.name}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    {user.email}
-                                  </p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {user.joinDate}
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="text-xs space-y-1">
-                                <div>작성: {user.postsCount}개</div>
-                                <div>참여: {user.participationCount}개</div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span
-                                className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                  user.status === 'active'
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-red-100 text-red-800'
-                                }`}
+                        </thead>
+                        <tbody>
+                          {filteredUsers.length === 0 ? (
+                            <tr>
+                              <td
+                                colSpan={5}
+                                className="text-center py-10 text-gray-500"
                               >
-                                {user.status === 'active' ? '활성' : '정지'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <div>
-                                  <button
-                                    onClick={() => {
-                                      setSelectedUser(user);
-                                      setIsUserDialogOpen(true);
-                                    }}
-                                    className="h-8 w-8 p-0 flex items-center justify-center hover:bg-gray-100 rounded-md"
-                                  >
-                                    <span className="w-4 h-4">👁️</span>
-                                  </button>
-                                  {isUserDialogOpen &&
-                                    selectedUser?.id === user.id && (
-                                      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                                        <div className="bg-white rounded-lg shadow-2xl w-full max-w-md">
-                                          <div className="p-6 border-b">
-                                            <h3 className="text-xl font-semibold text-gray-900">
-                                              사용자 상세 정보
-                                            </h3>
-                                          </div>
-                                          <div className="p-6">
-                                            <div className="space-y-4">
-                                              <div className="flex items-center gap-4">
-                                                <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                                                  <img
-                                                    src={
-                                                      selectedUser.profileImage ||
-                                                      '/placeholder.svg'
-                                                    }
-                                                    className="w-full h-full object-cover"
-                                                    alt={selectedUser.name}
-                                                  />
+                                <div className="text-2xl mb-2">🤷</div>
+                                검색 결과와 일치하는 사용자가 없습니다.
+                              </td>
+                            </tr>
+                          ) : (
+                            <></>
+                          )}
+                          {filteredUsers.map((user) => (
+                            <tr key={user.id} className="bg-white border-b">
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                                    <img
+                                      src={
+                                        user.profileImage || '/placeholder.svg'
+                                      }
+                                      alt={user.nickname}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) =>
+                                        ((
+                                          e.target as HTMLImageElement
+                                        ).style.display = 'none')
+                                      }
+                                    />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-sm">
+                                      {user.nickname}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {user.email}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-sm">
+                                {formatDate(user.createdAt)}
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="text-xs space-y-1">
+                                  <div>작성: {user.boardCount}개</div>
+                                  <div>참여: {user.chatRoomCount}개</div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span
+                                  className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                    user.status.toLowerCase() === 'active'
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'bg-red-100 text-red-800'
+                                  }`}
+                                >
+                                  {user.status.toLowerCase() === 'active'
+                                    ? '활성'
+                                    : '정지'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-2">
+                                  <div>
+                                    {/* <button  상세보기 일단 주석처리 
+                                      onClick={() => {
+                                        setSelectedUser(user);
+                                        setIsUserDialogOpen(true);
+                                      }}
+                                      className="h-8 w-8 p-0 flex items-center justify-center hover:bg-gray-100 rounded-md"
+                                    >
+                                      <span className="w-4 h-4">👁️</span>
+                                    </button> */}
+                                    {isUserDialogOpen &&
+                                      selectedUser?.id === user.id && (
+                                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                                          <div className="bg-white rounded-lg shadow-2xl w-full max-w-md">
+                                            <div className="p-6 border-b">
+                                              <h3 className="text-xl font-semibold text-gray-900">
+                                                사용자 상세 정보
+                                              </h3>
+                                            </div>
+                                            <div className="p-6">
+                                              <div className="space-y-4">
+                                                <div className="flex items-center gap-4">
+                                                  <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                                                    <img
+                                                      src={
+                                                        selectedUser.profileImage ||
+                                                        '/placeholder.svg'
+                                                      }
+                                                      className="w-full h-full object-cover"
+                                                      alt={
+                                                        selectedUser.nickname
+                                                      }
+                                                    />
+                                                  </div>
+                                                  <div>
+                                                    <h3 className="font-semibold text-lg">
+                                                      {selectedUser.nickname}
+                                                    </h3>
+                                                    <p className="text-gray-600">
+                                                      {selectedUser.email}
+                                                    </p>
+                                                    <p className="text-sm text-gray-500 flex items-center gap-1">
+                                                      <span className="w-3 h-3">
+                                                        📍
+                                                      </span>
+                                                      {selectedUser.location ||
+                                                        '지역 정보 없음'}
+                                                    </p>
+                                                  </div>
                                                 </div>
-                                                <div>
-                                                  <h3 className="font-semibold text-lg">
-                                                    {selectedUser.name}
-                                                  </h3>
-                                                  <p className="text-gray-600">
-                                                    {selectedUser.email}
-                                                  </p>
-                                                  <p className="text-sm text-gray-500 flex items-center gap-1">
-                                                    <span className="w-3 h-3">
-                                                      📍
-                                                    </span>
-                                                    {selectedUser.location}
-                                                  </p>
-                                                </div>
-                                              </div>
-                                              <div className="grid grid-cols-2 gap-4 text-sm">
-                                                <div>
-                                                  <span className="font-medium">
-                                                    가입일:
-                                                  </span>{' '}
-                                                  {selectedUser.joinDate}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    상태:
-                                                  </span>{' '}
-                                                  <span
-                                                    className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                                      selectedUser.status ===
+                                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                                  <div>
+                                                    <span className="font-medium">
+                                                      가입일:
+                                                    </span>{' '}
+                                                    {formatDate(
+                                                      selectedUser.createdAt
+                                                    )}
+                                                  </div>
+                                                  <div>
+                                                    <span className="font-medium">
+                                                      상태:
+                                                    </span>{' '}
+                                                    <span
+                                                      className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                                        selectedUser.status.toLowerCase() ===
+                                                        'active'
+                                                          ? 'bg-green-100 text-green-800'
+                                                          : 'bg-red-100 text-red-800'
+                                                      }`}
+                                                    >
+                                                      {selectedUser.status.toLowerCase() ===
                                                       'active'
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-red-100 text-red-800'
-                                                    }`}
-                                                  >
-                                                    {selectedUser.status ===
-                                                    'active'
-                                                      ? '활성'
-                                                      : '정지'}
-                                                  </span>
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    작성한 글:
-                                                  </span>{' '}
-                                                  {selectedUser.postsCount}개
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    참여한 글:
-                                                  </span>{' '}
-                                                  {
-                                                    selectedUser.participationCount
-                                                  }
-                                                  개
+                                                        ? '활성'
+                                                        : '정지'}
+                                                    </span>
+                                                  </div>
+                                                  <div>
+                                                    <span className="font-medium">
+                                                      작성한 글:
+                                                    </span>{' '}
+                                                    {selectedUser.boardCount}개
+                                                  </div>
+                                                  <div>
+                                                    <span className="font-medium">
+                                                      참여한 글:
+                                                    </span>{' '}
+                                                    {selectedUser.chatRoomCount}
+                                                    개
+                                                  </div>
                                                 </div>
                                               </div>
                                             </div>
-                                          </div>
-                                          <div className="flex justify-end gap-3 p-4 bg-gray-50 rounded-b-lg">
-                                            <button
-                                              onClick={() =>
-                                                setIsUserDialogOpen(false)
-                                              }
-                                              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md transition-colors"
-                                            >
-                                              닫기
-                                            </button>
+                                            <div className="flex justify-end gap-3 p-4 bg-gray-50 rounded-b-lg">
+                                              <button
+                                                onClick={() =>
+                                                  setIsUserDialogOpen(false)
+                                                }
+                                                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md transition-colors"
+                                              >
+                                                닫기
+                                              </button>
+                                            </div>
                                           </div>
                                         </div>
-                                      </div>
-                                    )}
-                                </div>
+                                      )}
+                                  </div>
 
-                                {user.status === 'active' ? (
-                                  <button
-                                    className="h-8 w-8 p-0 flex items-center justify-center text-red-600 hover:bg-red-100 rounded-md"
-                                    onClick={() => {
-                                      if (
-                                        window.confirm(
-                                          `${user.name}님의 계정을 정지하시겠습니까? 모든 활동이 제한됩니다.`
-                                        )
-                                      ) {
-                                        handleUserAction(user.id, 'suspend');
+                                  {user.status.toLowerCase() === 'active' ? (
+                                    <button
+                                      className="h-8 w-8 p-0 flex items-center justify-center text-red-600 hover:bg-red-100 rounded-md"
+                                      onClick={() =>
+                                        handleUserAction(user.id, 'suspend')
                                       }
-                                    }}
-                                  >
-                                    <span className="w-4 h-4">🚫</span>
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() =>
-                                      handleUserAction(user.id, 'activate')
-                                    }
-                                    className="h-8 w-8 p-0 flex items-center justify-center text-green-600 hover:bg-green-100 rounded-md"
-                                  >
-                                    <span className="w-4 h-4">✅</span>
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                                    >
+                                      <span className="w-4 h-4">🚫</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() =>
+                                        handleUserAction(user.id, 'activate')
+                                      }
+                                      className="h-8 w-8 p-0 flex items-center justify-center text-green-600 hover:bg-green-100 rounded-md"
+                                    >
+                                      <span className="w-4 h-4">✅</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                 </div>
               </div>
@@ -628,7 +711,9 @@ export default function Admin() {
                       <input
                         placeholder="게시글 검색..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setSearchTerm(e.target.value)
+                        }
                         className="pl-10 w-full sm:w-64 border rounded-md p-2"
                       />
                     </div>
@@ -697,7 +782,7 @@ export default function Admin() {
                                 <div className="flex items-center gap-4 text-xs text-gray-500">
                                   <div className="flex items-center gap-1">
                                     <span className="w-3 h-3">📅</span>
-                                    작성일: {post.createdAt}
+                                    작성일: {formatDate(post.createdAt)}
                                   </div>
                                   <div className="flex items-center gap-1">
                                     <span className="w-3 h-3">🕒</span>
@@ -890,4 +975,6 @@ export default function Admin() {
       </main>
     </div>
   );
-}
+};
+
+export default Admin;

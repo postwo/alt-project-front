@@ -16,6 +16,7 @@ import Posts from './views/Posts/PostsPage';
 import ChatModal from './views/Chat/chat-modal';
 import ChatModalWrapper from './views/Chat/ChatModalWrapper';
 import MyPage from './views/Member/myPage';
+import OauthRedirectHandler from './views/Member/OauthRedirectHandler';
 
 const cookies = new Cookies();
 
@@ -52,6 +53,8 @@ function App() {
         <Route path="/chat" element={<ChatModalWrapper />} /> {/* 채팅 모달 */}
         <Route path="/mypage" element={<MyPage />} /> {/* 마이페이지 */}
         <Route path="/admin" element={<Admin />} /> {/* 관리자 페이지 */}
+        {/*oauth 로그인 정지시 사용*/}
+        <Route path="/oauth/callback" element={<OauthRedirectHandler />} />
         <Route path="/board">
           {/* 게시글 상세보기 */}
           <Route path=":boardNumber" element={<BoardDetail />} />

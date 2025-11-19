@@ -7,7 +7,7 @@ import { useUserStore } from '../../store/userSlice';
 import kakaoLoginImg from '../../assets/kakao_login_medium_narrow.png';
 import googleLoginImg from '../../assets/google_login.png';
 
-interface DecodedToken extends JwtPayload {
+export interface DecodedToken extends JwtPayload {
   role?: 'USER' | 'ADMIN' | string[]; // 일반 로그인용 (단수형)
   roles?: 'USER' | 'ADMIN' | string[]; // 소셜 로그인용 (복수형) 또는 백엔드 설정에 따라
 }
@@ -79,7 +79,10 @@ function Login() {
       }
     } catch (error: any) {
       console.error('로그인 실패:', error.response?.data || error.message);
-      alert('로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.');
+      const errorMessage =
+        error.response?.data?.message ||
+        '이메일 또는 비밀번호가 올바르지 않습니다.';
+      alert(errorMessage);
     }
   };
 

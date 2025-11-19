@@ -9,7 +9,7 @@ const cookies = new Cookies();
 interface UserState {
   email: string | null;
   nickname: string | null;
-  role: 'USER' | 'ADMIN' | null; // 단일 역할로 변경
+  role: 'USER' | 'ADMIN' | null;
   isAuthenticated: boolean; // 로그인 상태
   isAuthLoading: boolean; // 이름 변경: isLoading -> isAuthLoading
   setUserFromToken: (token: string) => void;
@@ -26,18 +26,20 @@ export const useUserStore = create<UserState>((set) => ({
 
   setUserFromToken: (token: string) => {
     try {
-      const decoded: any = jwtDecode(token); // jwtDecode 타입이 any일 수 있음
-      // 'roles' 필드를 우선적으로 확인하고, 없으면 'role' 필드를 사용합니다.
+      const decoded: any = jwtDecode(token);
       const roleSource = decoded.roles || decoded.role;
+
+      // 백엔드에서 이미 검증되었으므로, 토큰이 있다는 것 자체가 정상 사용자임을 의미합니다.
+      // 따라서 status를 확인할 필요가 없습니다.
       set({
         email: decoded.sub,
         nickname: decoded.nickname,
-        // 역할 정보가 배열이면 첫 번째 요소를, 문자열이면 그대로 사용합니다.
         role: Array.isArray(roleSource) ? roleSource[0] : roleSource,
         isAuthenticated: true,
         isAuthLoading: false, // 로딩 완료
       });
     } catch {
+      // 토큰 디코딩에 실패한 경우 (유효하지 않은 토큰)
       set({
         email: null,
         nickname: null,

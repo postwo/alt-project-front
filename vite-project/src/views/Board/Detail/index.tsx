@@ -1,7 +1,7 @@
 // BoardDetail.tsx
 
 import { useEffect, useState, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import ChatModal from '../../Chat/chat-modal';
 import axiosInstance from '../../../apis/axiosInstance';
 import { useUserStore } from '../../../store/userSlice';
@@ -36,6 +36,7 @@ const reportReasons = {
 function BoardDetail() {
   const params = useParams();
   const navigate = useNavigate();
+  const location = useLocation(); // 👈 useLocation 훅을 추가합니다.
   const boardId = Number(params.boardNumber);
   const { isAuthenticated, email } = useUserStore();
 

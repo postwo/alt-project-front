@@ -13,7 +13,6 @@ import { useEffect } from 'react';
 import KakaoRedirectHandler from './views/oauth/kakao';
 import GoogleRedirectHandler from './views/oauth/GoogleRedirectHandler';
 import Posts from './views/Posts/PostsPage';
-import ChatModal from './views/Chat/chat-modal';
 import ChatModalWrapper from './views/Chat/ChatModalWrapper';
 import MyPage from './views/Member/myPage';
 import OauthRedirectHandler from './views/Member/OauthRedirectHandler';

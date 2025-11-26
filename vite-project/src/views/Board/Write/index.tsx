@@ -12,11 +12,10 @@ function BoardWrite() {
     'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
   const open = useDaumPostcodePopup(postCodeScriptUrl);
 
-  // 1️⃣ 주소 관련 새로운 상태 추가
   const [addressData, setAddressData] = useState({
     sido: '',
     sigungu: '',
-    fullAddress: '', // 도로명/지번 주소 (사용자에게 보여줄 전체 주소)
+    fullAddress: '',
   });
 
   const [formData, setFormData] = useState({
@@ -24,8 +23,8 @@ function BoardWrite() {
     hashtags: '',
     content: '',
     totalPrice: '',
-    maxParticipants: '', // 🚨 모집 인원 상태 추가
-    address: '', // 일단 기존 폼 데이터 구조 유지
+    maxParticipants: '',
+    address: '',
   });
 
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -42,7 +41,6 @@ function BoardWrite() {
 
   useEffect(() => {
     return () => {
-      // 컴포넌트 언마운트 시 URL.createObjectURL로 생성된 URL 해제
       imagePreviewUrls.forEach(URL.revokeObjectURL);
     };
   }, [imagePreviewUrls]);
@@ -56,7 +54,7 @@ function BoardWrite() {
     if (files.length === 0) return;
 
     const newFiles = [...selectedImages, ...files].slice(0, 5);
-    imagePreviewUrls.forEach(URL.revokeObjectURL); // 기존 미리보기 URL 해제
+    imagePreviewUrls.forEach(URL.revokeObjectURL);
     const newPreviewUrls = newFiles.map((file) => URL.createObjectURL(file));
 
     setSelectedImages(newFiles);
@@ -87,12 +85,10 @@ function BoardWrite() {
     setMainImageIndex(index);
   };
 
-  // 2️⃣ Daum Postcode 완료 콜백 수정
   const handleAddressComplete = useCallback((data: any) => {
-    let fullAddress = data.address; // '서울시 강남구 논현동 1-1'
+    let fullAddress = data.address;
     let extraAddress = '';
 
-    // 법정동명 또는 아파트/건물명 추가
     if (data.addressType === 'R') {
       if (data.bname !== '') {
         extraAddress += data.bname;
@@ -104,14 +100,12 @@ function BoardWrite() {
       fullAddress += extraAddress !== '' ? ` (${extraAddress})` : '';
     }
 
-    // 시/도, 시/군/구 데이터를 별도로 추출하여 상태에 저장
     setAddressData({
-      sido: data.sido || '', // 예: '서울'
-      sigungu: data.sigungu || '', // 예: '강남구'
-      fullAddress: fullAddress, // 예: '서울시 강남구 논현동 1-1 (논현동)'
+      sido: data.sido || '',
+      sigungu: data.sigungu || '',
+      fullAddress: fullAddress,
     });
 
-    // 폼 데이터에는 전체 주소만 업데이트 (기존 로직 유지)
     handleInputChange('address', fullAddress);
   }, []);
 
@@ -121,7 +115,6 @@ function BoardWrite() {
     });
   };
 
-  // 🔥 이미지를 먼저 업로드하여 URL을 받는 함수
   const uploadImages = async (files: File[]): Promise<string[]> => {
     const uploadPromises = files.map(async (file) => {
       const formData = new FormData();
@@ -133,8 +126,6 @@ function BoardWrite() {
             'Content-Type': 'multipart/form-data',
           },
         });
-        // 서버 응답 형태에 따라 수정 필요할 수 있음.
-        // 현재는 response.data가 URL 문자열이라고 가정합니다.
         return response.data;
       } catch (error) {
         console.error('이미지 업로드 실패:', error);
@@ -160,7 +151,6 @@ function BoardWrite() {
       return;
     }
 
-    // 🚨 모집 인원 유효성 검사: 본인 포함 최소 2명 이상이어야 함
     const maxParticipantsNum = Number(formData.maxParticipants);
     if (maxParticipantsNum < 2 || maxParticipantsNum > 100) {
       alert('총 모집 인원은 본인 포함 최소 2명, 최대 100명으로 입력해주세요.');
@@ -170,7 +160,6 @@ function BoardWrite() {
     setIsSubmitting(true);
 
     try {
-      // 1️⃣ 먼저 이미지들을 업로드하여 URL을 받음
       const orderedImages = [
         selectedImages[mainImageIndex],
         ...selectedImages.filter((_, i) => i !== mainImageIndex),
@@ -178,23 +167,18 @@ function BoardWrite() {
 
       const imageUrls = await uploadImages(orderedImages);
 
-      // 2️⃣ 게시글 데이터 생성 (이미지 URL, 모집 인원 포함)
       const boardRequest = {
         title: formData.title,
         content: formData.content,
         totalPrice: Number(formData.totalPrice),
-        maxParticipants: maxParticipantsNum, // 🚨 본인 포함 총 모집 인원 수 전송
+        maxParticipants: maxParticipantsNum,
         address: formData.address,
-        // 🚨 서버에서 시/군/구를 별도로 필요로 한다면 여기에 추가합니다.
-        // sido: addressData.sido,
-        // sigungu: addressData.sigungu,
         hashtags: formData.hashtags
           .split(' ')
           .filter((tag) => tag.startsWith('#') && tag.length > 1),
-        boardImageList: imageUrls, // 업로드된 이미지 URL 배열
+        boardImageList: imageUrls,
       };
 
-      // 3️⃣ 게시글 생성 요청
       const response = await axiosInstance.post(
         '/api/board/create',
         boardRequest,
@@ -205,31 +189,32 @@ function BoardWrite() {
         }
       );
 
-      console.log('나눔 공고 등록 성공:', response.data);
       alert('나눔 공고가 성공적으로 등록되었습니다!');
 
       const boardId = response.data?.data?.id;
 
-      const chatRoomName = formData.title; // 게시글 제목을 채팅방 이름으로 사용
-      const chatRequestUrl = `/chat/room/group/create`;
+      if (!boardId) {
+        throw new Error('게시글 생성 후 boardId를 받지 못했습니다.');
+      }
 
-      // 4️⃣ 채팅방 개설 요청 및 Room ID 받기
+      const chatRoomName = formData.title;
+      const chatRequestUrl = `api/chat/room/group/create`;
+
+      // ⬇️ [수정] 채팅방 개설 요청 시 boardId를 쿼리 파라미터로 추가
       const chatRoomResponse = await axiosInstance.post(
-        `${chatRequestUrl}?roomName=${chatRoomName}`
+        `${chatRequestUrl}?roomName=${chatRoomName}&boardId=${boardId}`
       );
-      // 서버에서 Long 타입의 roomId를 직접 반환한다고 가정합니다.
+
       const newRoomId = chatRoomResponse.data;
       console.log('채팅방 개설 성공. Room ID:', newRoomId);
 
-      // 5️⃣ ⭐️ 작성자 자동 채팅방 참여 요청 ⭐️
       if (newRoomId) {
         const joinResponse = await axiosInstance.post(
-          `/chat/room/group/${newRoomId}/join`
+          `api/chat/room/group/${newRoomId}/join`
         );
         console.log('채팅방 참여 성공:', joinResponse.data);
       }
 
-      console.log('boardid' + boardId);
       navigate('/posts');
     } catch (error) {
       console.error('나눔 공고 등록 실패:', error);
@@ -254,7 +239,6 @@ function BoardWrite() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50">
       <main className="py-8 sm:py-12 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto relative">
-          {/* 이모지 배경 */}
           <div className="fixed inset-0 pointer-events-none overflow-hidden">
             <div className="absolute top-20 left-4 sm:left-10 text-4xl sm:text-6xl animate-bounce opacity-20">
               🥬
@@ -282,7 +266,6 @@ function BoardWrite() {
 
             <div className="space-y-4 sm:space-y-6">
               <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-                {/* 제목 */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     📦 제목
@@ -297,7 +280,6 @@ function BoardWrite() {
                   />
                 </div>
 
-                {/* 해시태그 */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     # 해시태그
@@ -317,7 +299,6 @@ function BoardWrite() {
                   </p>
                 </div>
 
-                {/* 이미지 */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     📷 상품 이미지 (최대 5개)
@@ -372,7 +353,6 @@ function BoardWrite() {
                   </div>
                 </div>
 
-                {/* 상품 설명 */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
                     상품 설명
@@ -388,7 +368,6 @@ function BoardWrite() {
                   />
                 </div>
 
-                {/* 1인당 가격 */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     💰 1인당 가격
@@ -405,7 +384,6 @@ function BoardWrite() {
                   />
                 </div>
 
-                {/* 🚨 모집 인원 입력 필드 */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     🧑‍🤝‍🧑 총 모집 인원 (본인 포함)
@@ -417,7 +395,7 @@ function BoardWrite() {
                     onChange={(e) =>
                       handleInputChange('maxParticipants', e.target.value)
                     }
-                    min="2" // 최소 2명 (작성자 1명 + 참여자 1명)
+                    min="2"
                     className="h-10 sm:h-12 border border-gray-200 focus:border-emerald-500 focus:ring-emerald-500 text-sm sm:text-base w-full px-2 rounded"
                     required
                   />
@@ -427,13 +405,11 @@ function BoardWrite() {
                   </p>
                 </div>
 
-                {/* 3️⃣ 주소 필드 수정 및 시군구 표시 추가 */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     📍 거래 지역
                   </label>
                   <div className="flex flex-col sm:flex-row gap-2">
-                    {/* 시/도 및 시/군/구 필드 (읽기 전용으로 표시) */}
                     <input
                       type="text"
                       placeholder="시/도"
@@ -448,7 +424,6 @@ function BoardWrite() {
                       readOnly
                       className="h-10 sm:h-12 border border-gray-200 text-sm sm:text-base w-full sm:w-1/3 px-2 rounded bg-gray-50 text-gray-600"
                     />
-                    {/* 전체 주소 필드 (검색 버튼 역할) */}
                     <input
                       type="text"
                       placeholder="클릭하여 상세 주소 검색"
@@ -466,7 +441,6 @@ function BoardWrite() {
                   )}
                 </div>
 
-                {/* 등록 버튼 */}
                 <div className="pt-4 sm:pt-6">
                   <button
                     type="submit"
